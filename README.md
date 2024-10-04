@@ -1,8 +1,8 @@
-# SovereignKey
+# SovereignKey (#SK) 
 
-The #SovereignKey is a collection of open-source tools that enhances your control & privacy in the ever-evolving digital realm, as it turns any computer into a secure, self-managed device for almost all your computer needs, including the managmant of your Bitcoin.
+The #SK is a collection of free & open-source (FOSS) tools that enhances your control & privacy in the digital realm. It transforms any computer into a secure & self-managed device for almost all your everyday computer needs, including the management of your Bitcoin interactions across various options.
 
-Designed to look like an ordinary USB drive, it offers discreet security and seamless integration. With a focus on user sovereignty and the utilization of battle-tested privacy tools, #SovereignKey is the ideal solution for managing your digital value privately & securely, yet still affordably.
+Encased within an ordinary USB drive, it offers discreet security and seamless integration, with a focus on user sovereignty and the utilization of battle-tested FOSS privacy tools, SK is the ideal solution for managing your digital value privately & securely, yet still affordably.
 
 ## Project Screenshots
 
@@ -12,17 +12,17 @@ Project screenshots help users to see the product even before opening the live d
 
 ## Features
 
-The SoverignKey is essentially a collection of Open Source tools that act as a secure utility for anyone & everyone who chooses to use it, for their Bitcoin interaction as well as secure computing.
+The SK is essentially a collection of Free & Open Source tools that act as a secure utility for anyone & everyone who chooses to use it, for their Bitcoin interaction as well as secure computing ove rthe Tor network.
 
-It does not require any prior knowledge of how the tools work, beyond this Readme, to get started with the #SovereignKey but you will find links to all the different resources used to bring this about.
+It should not require any prior knowledge of how all the tools it is made up of work, beyond this Readme, to get started with the SK, but you will find links to all the different resources used to bring this about you you can DYOR (Do Your Own Research).
 <details> <summary>Expand for Features</summary>
 </details>
 
 ## Installation Steps
 
-In order to use the #SovereignKey, you will have to put the computer you are attaching it to into Boot Mode & then choose to Boot from the USB/External USB instead of the internal Hard Disk. This will effectively allow you to use the computer you have plugged the #SovereignKey into as your own computer.
+In order to use the SK, you will have to put the computer you are attaching it to into Boot Mode & then choose to `Boot from the USB/External USB` instead of the `Internal Hard Disk`. This will effectively allow you to use the computer you have plugged the SK into as your own computer. Why? Because you are now booting up from the `Operating System` (OS) that is on the SK.
 
-Please Note: Some devices require that you tap the Boot Menu Key repatadly as the device boots up in order to access the Boot Menu instead of only pressing it once or holding it down.
+Please Note: Some devices require that you tap the `Boot Menu Key` repatadly as the device boots up in order to access the `Boot Menu` instead of only pressing it once or holding it down.
 
 <details> <summary>PC brands & their associated Hotkeys</summary>
 
@@ -83,7 +83,7 @@ By bringing technologies & information that have already been open sourced toget
 
 <details> <summary>Expand for Technologies Used</summary>
 
-The Operating System (OS) used for the #SovereignKey is [Tails](https://tails.net) ~ Used by Human Rights Activits & Journalists around the World, is a portable operating system capable of protecting against surveillance and censorship. It makes use of the Tor network by default to protect your privacy online. To assit in this, it includes a selection of applications to work on sensitive documents and communicate securely. Everything in Tails is ready-to-use and has safe defaults.
+The Operating System (OS) used for the #SK is [Tails](https://tails.net) ~ Used by Human Rights Activits & Journalists around the World, is a portable operating system capable of protecting against surveillance and censorship. It makes use of the Tor network by default to protect your privacy online. To assit in this, it includes a selection of applications to work on sensitive documents and communicate securely. Everything in Tails is ready-to-use and has safe defaults.
 
 Combining Tails, Bitcoin Core & the technologies below allow for strong anonymity for transactions and secure encrypted storage for your computer needs. 
 
@@ -107,7 +107,7 @@ Combining Tails, Bitcoin Core & the technologies below allow for strong anonymit
 
 <details> <summary>Knowledge Transfer</summary>
 
->***Easy Books - A collection of curated Books around Bitcoin & Financial Literacy.***
+>***Free Books - A collection of curated Books around Bitcoin & Financial Literacy.***
 
 - [The Bitcoin Whitepaper in various Languages](https://exonumia.africa) by Satoshi Nakamoto
 
@@ -123,7 +123,7 @@ Combining Tails, Bitcoin Core & the technologies below allow for strong anonymit
 
 - [Codex32 - Shamir Secret Sharing Scheme](https://secretcodex32.com/docs/index.html) by Leon Olsson Curr & Pearlwart Snead
 
-> ***Easy Education - A colllection of Media Based education around Bitcoin***
+> ***Digital Education - A colllection of Media Based education around Bitcoin***
 
 [The World’s First Kids Cartoon about Bitcoin!](https://www.youtube.com/watch?v=_ekzsZZGfsk) by Tuttle Twins 
 
@@ -137,7 +137,7 @@ Combining Tails, Bitcoin Core & the technologies below allow for strong anonymit
 
 Project demo URL helps the viewer to see live projects easily. We can also use this to show live previews to prospective interviewers quickly during interviews.
 
-We have brought together Quick Start Guides for all the Tools mentioned above to make it easier to get started & make the most out of your journey with your #SovereignKey.
+We have brought together Quick Start Guides for all the Tools mentioned above to make it easier to get started & make the most out of your journey with your #SK.
 
 </details>
 
