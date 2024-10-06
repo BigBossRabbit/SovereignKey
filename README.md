@@ -1,8 +1,10 @@
 # SovereignKey (#SK) 
 
-The #SK is a collection of free & open-source (FOSS) tools that enhances your control & privacy in the digital realm. It transforms any computer into a secure & self-managed device for almost all your everyday computer needs, including the management of your Bitcoin interactions across various options.
+The #SK is a collection of free & open-source (FOSS) tools that enhances your control & privacy in the digital realm. It achieves this by transforming any computer it is plugged into, and booted from, into a secure & self-managed device for almost all your security focused computer needs, including the management of your Bitcoin interactions viaa an arry of options.
 
-Encased within an ordinary USB drive, it offers discreet security and seamless integration, with a focus on user sovereignty and the utilization of battle-tested FOSS privacy tools, SK is the ideal solution for managing your digital value privately & securely, yet still affordably.
+Encased within an ordinary USB drive (varrying GB options), it offers discreet security & seamless integration; Booting from an Operating System (OS) know to focus on user sovereignty & the utilization of battle-tested FOSS privacy tools. 
+
+SK is the ideal solution for managing your digital value privately & securely, yet still affordably.
 
 ## Project Screenshots
 
@@ -12,15 +14,19 @@ Project screenshots help users to see the product even before opening the live d
 
 ## Features
 
-The SK is essentially a collection of Free & Open Source tools that act as a secure utility for anyone & everyone who chooses to use it, for their Bitcoin interaction as well as secure computing ove rthe Tor network.
+The SK is essentially a collection of Free & Open Source tools that act as a secure utility for anyone & everyone who chooses to use it, for their Bitcoin interaction as well as secure computing over the Tor network.
 
-It should not require any prior knowledge of how all the tools it is made up of work, beyond this Readme, to get started with the SK, but you will find links to all the different resources used to bring this about you you can DYOR (Do Your Own Research).
+It should not require any prior knowledge of how all the tools it is made up of work, beyond this Readme, to get started with the SK. However, but will find links to all the different resources used to bring this about. 
+
+We highly recommend that you DYOR (Do Your Own Research) on these and famialir9se yourself with them.
 <details> <summary>Expand for Features</summary>
 </details>
 
 ## Installation Steps
 
-In order to use the SK, you will have to put the computer you are attaching it to into Boot Mode & then choose to `Boot from the USB/External USB` instead of the `Internal Hard Disk`. This will effectively allow you to use the computer you have plugged the SK into as your own computer. Why? Because you are now booting up from the `Operating System` (OS) that is on the SK.
+In order to use the SK, you will have to put the computer you are attaching it to into Boot Mode & then choose to `Boot from the USB/External USB` instead of the `Internal Hard Disk`. This will effectively allow you to use the computer you have plugged the SK into as your own computer. 
+
+Why? Because you are now booting up from the `Operating System` (OS) that is on the SK.
 
 Please Note: Some devices require that you tap the `Boot Menu Key` repatadly as the device boots up in order to access the `Boot Menu` instead of only pressing it once or holding it down.
 
@@ -69,13 +75,10 @@ Here is a list of PC brands and their associated hotkeys for entering the boot m
 
 If you would like to have your work added to the Knowledge Transfer section of the #SoverignKey then please do contact us via the form & we will get back to you.
 
-You can contribute to either, or both the, Easy Books & Easy Education, both described in the following section about Technologies Used.
 
 ## Technologies Used
 
-In this section, we can list down technologies or modules which we used while building the project to help others understand the creation components in a better manner.
-
-Accessible Computing is the goal of the #SoverignKey - Many individuals need access to a computer but do not have the funds to purchase one or to upgrade to newer models. Others need a way to ensure the work they are doing is as private as possible without having to worry about the underlying privacy of the device they are using.
+Accessible Computing is the goal of the #SK - Many individuals need access to a computer but do not have the funds to purchase one or to upgrade to newer models. Others need a way to ensure the work they are doing is as private as possible without having to worry about the underlying privacy of the device they are using.
 
 By bringing technologies & information that have already been open sourced together in order to create a "Swiss Army Knife" type Soverign Solution, we have essentially found a way to export these tools in one product to the masses across the globe.
 
@@ -83,25 +86,27 @@ By bringing technologies & information that have already been open sourced toget
 
 <details> <summary>Expand for Technologies Used</summary>
 
-The Operating System (OS) used for the #SK is [Tails](https://tails.net) ~ Used by Human Rights Activits & Journalists around the World, is a portable operating system capable of protecting against surveillance and censorship. It makes use of the Tor network by default to protect your privacy online. To assit in this, it includes a selection of applications to work on sensitive documents and communicate securely. Everything in Tails is ready-to-use and has safe defaults.
+The Operating System (OS) used for the #SK is [Tails](https://tails.net) ~ Used by Human Rights Activits & Journalists around the World, it is a portable operating system capable of protecting against surveillance & censorship. It makes use of the Tor network by default to protect your privacy online. To assit in this, it includes a selection of applications to work on sensitive documents & communicate securely. Everything in Tails is ready-to-use & has safe defaults.
 
-Combining Tails, Bitcoin Core & the technologies below allow for strong anonymity for transactions and secure encrypted storage for your computer needs. 
+Combining Tails, Bitcoin Core & the technologies below allow for strong anonymity for transactions & secure encrypted storage for your computer needs. 
+
+<details> <summary>Electrum Wallet</summary>
+
+[Electrum Wallet](https://electrum.org/) - This wallet is added into Tails by Default & has been a Bitcoin Desktop Wallet of choice since its creation in 2011. Electrum’s focus is speed, with low resource usage & simplifying Bitcoin.
+
+</details>
 
 <details> <summary>BAILS</summary>
 
-[BAILS](https://github.com/BenWestgate/Bails) - Installs Bitcoin Core on the encrypted Persistent Storage of Tails, creates and recovers Bitcoin Core wallets from Codex32 (BIP93) seed backups, and creates backup Bails USB sticks and shareable blank Bails USB sticks. It ensures your money is protected from surveillance, censorship, and confiscation, leaving no trace of your Bitcoin use on the computer or the Internet.
+[BAILS](https://github.com/BenWestgate/Bails) - Installs Bitcoin Core on the encrypted Persistent Storage of Tails, creates & recovers Bitcoin Core wallets from Codex32 (BIP93) seed backups & creates backup Bails USB sticks & shareable blank Bails USB sticks. 
+
+It ensures your money is protected from surveillance, censorship, and confiscation, leaving no trace of your Bitcoin use on the computer or the Internet.
 
 </details>
 
 <details> <summary>Sparrow Wallet</summary>
 
-[Sparrow Wallet](https://www.sparrowwallet.com) - Sparrow is a Bitcoin wallet for those who value financial self sovereignty. Sparrow’s emphasis is on security, privacy and usability & prides itself on not hiding information from you - on the contrary it attempts to provide as much detail as possible about your transactions and UTXOs, but in a way that is manageable and usable
-
-</details>
-
-<details> <summary>Electrum Wallet</summary>
-
-[Electrum Wallet](https://electrum.org/) - This wallet is added into Tails by Default & has been a Bitcoin Desktop Wallet of choice since its creation in 2011. Electrum’s focus is speed, with low resource usage and simplifying Bitcoin.
+[Sparrow Wallet](https://www.sparrowwallet.com) - Sparrow is a Bitcoin wallet for those who value financial self sovereignty. Sparrow’s emphasis is on security, privacy & usability while priding itself on not hiding information from you - on the contrary it attempts to provide as much detail as possible about your transactions & UTXOs, but in a way that is manageable & usable.
 
 </details>
 
@@ -123,7 +128,7 @@ Combining Tails, Bitcoin Core & the technologies below allow for strong anonymit
 
 - [Codex32 - Shamir Secret Sharing Scheme](https://secretcodex32.com/docs/index.html) by Leon Olsson Curr & Pearlwart Snead
 
-> ***Digital Education - A colllection of Media Based education around Bitcoin***
+> ***Digital Education - A colllection of Digitial Media Based Education around Bitcoin***
 
 [The World’s First Kids Cartoon about Bitcoin!](https://www.youtube.com/watch?v=_ekzsZZGfsk) by Tuttle Twins 
 
@@ -143,11 +148,19 @@ We have brought together Quick Start Guides for all the Tools mentioned above to
 
 ## A few ways to help & info on proceeds
 
-Here we can add links for asking people to star the project or support our efforts via donations.
+This is a passion project first & foremost, so I thank you all for your interest in the #SK & how to go about assisting us in continuing to make it a reality.
+
+Since "getting into" Bitcoin back in 2019/2020, I have always wanted to find a way to make a meaningful contribution to its advancement in some way, shape or form. I truly belive the self-custodial ownership & usage of our data & value is the key to our kingdoms & that there is a lot more we can do to ensure there is as little, within our control, being leaked to big or small tech. 
+
+That combined with the burining desire to ensure we can actually get technogoly in the hands of those who need it the most in this current & coming age of tech dominiation, has led me to the #SK, which is my contribution by way of working to be a prudent student, in a time where everyone wants to be the reviered puzzle master.
+
+A portion of all sales will therefore be donated to all of the contributors to the FOSS components of the #SK listed under `Knowledge Transfer` above.
 
 ## Warnings/Known Issues
 
 <details> <summary>Common Issues</summary>
+
+This is in no way a comprehensive list, however, it will be updated with more information as we discover the issues reported:
 
 - Tails does not start at all on Mac models that use the Apple M1 chip and on many other Mac models. Here is a list of all current Known Issues with trying to get Tails to boot on various hardware.
 
