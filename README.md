@@ -31,6 +31,7 @@ Why? Because you are now booting up from the `Operating System` (OS) that is on 
 Please Note: Some devices require that you tap the `Boot Menu Key` repatadly as the device boots up in order to access the `Boot Menu` instead of only pressing it once or holding it down.
 
 <details> <summary>Expand for Steps</summary>
+
   
   1. Make sure computer is turned off.  
   
@@ -135,9 +136,9 @@ It ensures your money is protected from surveillance, censorship, and confiscati
 
 - [2nd Edition: The Simplest Bitcoin Book Ever Written](https://d.nostr.build/tIkvB3qVy5jVkH48.pdf) by Keysa Luna
   
-- [Bitcoin: Everything in 21 Pages](url) by Bitcoin Reserve 
+- [Bitcoin: Separation of Money and State](https://braiins.com/books/bitcoin-separation-of-money-and-state) by Josef Tětek
 
-- [The Bitcoin Standard](url) by Saifedean Ammous
+- [The Bitcoin Standard](https://worldfreebooks.com/book/the-bitcoin-standard-by-saifedean-ammous/) by Saifedean Ammous
 
 - [Inventing Bitcoin](url) by Yan Pritzker
 
