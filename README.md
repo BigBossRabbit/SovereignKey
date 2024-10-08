@@ -31,17 +31,16 @@ Why? Because you are now booting up from the `Operating System` (OS) that is on 
 Please Note: Some devices require that you tap the `Boot Menu Key` repatadly as the device boots up in order to access the `Boot Menu` instead of only pressing it once or holding it down.
 
 <details> <summary>Expand for Steps</summary>
-  [1]. Make sure computer is turned off.  
-  [2]. Plug your SK into USB slot of the computer.  
-  [3]. Turn computer on.  
-  
-  4. Tap/Hold the correct `Boot Menu Key` to enter the `Boot Menu`.
-  5. Select `Boot from the USB/External USB` (might be named differently depending on the specific computer you are using but there will be mention of eother a USB or External Drive).
-  6. Wait for Tails to load.
-  7. Enter the default `Persistant Storage` passphrase, click `Unlock Encryption`.
-  8. Select the blue `Start Tails` button on the top right of the box.
-  9. Connect to a local internet network so that you have internet access.
-  10. Select `Connect to Tor` when the Tor Connection window appears.
+  1. Make sure computer is turned off.  
+  2. Plug your SK into USB slot of the computer.  
+  3. Turn computer on.  
+  4. Tap/Hold the correct `Boot Menu Key` to enter the `Boot Menu`.  
+  5. Select `Boot from the USB/External USB` (might be named differently depending on the specific computer you are using but there will be mention of eother a USB or External Drive).  
+  6. Wait for Tails to load.  
+  7. Enter the default `Persistant Storage` passphrase, click `Unlock Encryption`.  
+  8. Select the blue `Start Tails` button on the top right of the box.  
+  9. Connect to a local internet network so that you have internet access.  
+  10. Select `Connect to Tor` when the Tor Connection window appears.  
   
 </details>
 
