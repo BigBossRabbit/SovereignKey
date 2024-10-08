@@ -32,8 +32,8 @@ Please Note: Some devices require that you tap the `Boot Menu Key` repatadly as 
 
 <details> <summary>Expand for Steps</summary>
   [1]. Make sure computer is turned off.  
-  [2]. Plug your SK into USB slot of the computer.
-  3. Turn computer on.
+  [2]. Plug your SK into USB slot of the computer.  
+  * 3. Turn computer on.
   4. Tap/Hold the correct `Boot Menu Key` to enter the `Boot Menu`.
   5. Select `Boot from the USB/External USB` (might be named differently depending on the specific computer you are using but there will be mention of eother a USB or External Drive).
   6. Wait for Tails to load.
