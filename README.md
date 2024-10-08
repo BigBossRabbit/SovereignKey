@@ -1,8 +1,8 @@
 # SovereignKey (#SK) 
 
-The #SK is a collection of free & open-source (FOSS) tools that enhances your control & privacy in the digital realm. It achieves this by transforming any computer it is plugged into, and booted from, into a secure & self-managed device for almost all your security focused computer needs, including the management of your Bitcoin interactions viaa an arry of options.
+The #SK is a collection of free & open-source (FOSS) tools that enhances your control & privacy in the digital realm. It achieves this by transforming any computer it is plugged into, and booted from, into a secure & self-managed device for almost all your security focused computer needs, including the management of your Bitcoin interactions via an arry of options.
 
-Encased within an ordinary USB drive (varrying GB options), it offers discreet security & seamless integration; Booting from an Operating System (OS) know to focus on user sovereignty & the utilization of battle-tested FOSS privacy tools. 
+Encased within an ordinary USB drive (varrying GB options to come), it offers discreet security & seamless integration as it boots from an Operating System (OS) know to focus on user sovereignty & the utilization of battle-tested FOSS privacy tools. 
 
 SK is the ideal solution for managing your digital value privately & securely, yet still affordably.
 
@@ -16,9 +16,9 @@ Project screenshots help users to see the product even before opening the live d
 
 The SK is essentially a collection of Free & Open Source tools that act as a secure utility for anyone & everyone who chooses to use it, for their Bitcoin interaction as well as secure computing over the Tor network.
 
-It should not require any prior knowledge of how all the tools it is made up of work, beyond this Readme, to get started with the SK. However, but will find links to all the different resources used to bring this about. 
+It does not require any prior knowledge of how all the tools it is made up of work, beyond this ReadMe file, to get started with the SK. However, you will find links to all the different resources used to bring this about further down in this file. 
 
-We highly recommend that you DYOR (Do Your Own Research) on these and famialir9se yourself with them.
+We highly recommend that you DYOR (`Do Your Own Research`) on these and familiarise yourself with them.
 <details> <summary>Expand for Features</summary>
 </details>
 
@@ -29,6 +29,20 @@ In order to use the SK, you will have to put the computer you are attaching it t
 Why? Because you are now booting up from the `Operating System` (OS) that is on the SK.
 
 Please Note: Some devices require that you tap the `Boot Menu Key` repatadly as the device boots up in order to access the `Boot Menu` instead of only pressing it once or holding it down.
+
+<details> <summary>Expand for Steps</summary>
+  1. Make sure computer is turned off.
+  2. Plug your SK into USB slot of the computer.
+  3. Turn computer on.
+  4. Tap/Hold the correct `Boot Menu Key` to enter the `Boot Menu`.
+  5. Select `Boot from the USB/External USB` (might be named differently depending on the specific computer you are using but there will be mention of eother a USB or External Drive).
+  6. Wait for Tails to load.
+  7. Enter the default `Persistant Storage` passphrase, click `Unlock Encryption`.
+  8. Select the blue `Start Tails` button on the top right of the box.
+  9. Connect to a local internet network so that you have internet access.
+  10. Select `Connect to Tor` when the Tor Connection window appears.
+  
+</details>
 
 <details> <summary>PC brands & their associated Hotkeys</summary>
 
@@ -73,14 +87,13 @@ Here is a list of PC brands and their associated hotkeys for entering the boot m
 
 ## Contribution Guidelines
 
-If you would like to have your work added to the Knowledge Transfer section of the #SoverignKey then please do contact us via the form & we will get back to you.
-
+If you would like to have your work added to the Knowledge Transfer section of the #SK then please do [Email Us](mailto:okin@okinent.org) & we will get back to you as soon as possible.
 
 ## Technologies Used
 
-Accessible Computing is the goal of the #SK - Many individuals need access to a computer but do not have the funds to purchase one or to upgrade to newer models. Others need a way to ensure the work they are doing is as private as possible without having to worry about the underlying privacy of the device they are using.
+Accessible Computing is the goal of the #SK - Many individuals need access to a computer but do not have the funds to purchase one, or to upgrade to newer models. Others, need a way to ensure the work they are doing is as private as possible without having to worry about the underlying privacy of the device they are using.
 
-By bringing technologies & information that have already been open sourced together in order to create a "Swiss Army Knife" type Soverign Solution, we have essentially found a way to export these tools in one product to the masses across the globe.
+By bringing technologies & information that have already been open sourced together in order to create a "Swiss Army Knife" type Soverign Solution, we have essentially found a way to export these tools in one product to the masses across the globe, at affordable rates.
 
 >*Why rebuild the wheel when you can build something more by utilizing pulley systems built using that wheel technology?*
 
