@@ -6,21 +6,14 @@ Encased within an ordinary USB drive (varrying GB options to come), it offers di
 
 SK is the ideal solution for managing your digital value privately & securely, yet still affordably.
 
-## Project Screenshots
-
-Project screenshots help users to see the product even before opening the live demo link. For frontend/full-stack projects this is a must-have section.
-<details> <summary>Expand for Project Screenshots</summary>
-</details>
-
 ## Features
 
 The SK is essentially a collection of Free & Open Source tools that act as a secure utility for anyone & everyone who chooses to use it, for their Bitcoin interaction as well as secure computing over the Tor network.
 
-It does not require any prior knowledge of how all the tools it is made up of work, beyond this ReadMe file, to get started with the SK. However, you will find links to all the different resources used to bring this about further down in this file. 
+It does not require any prior knowledge of how all the tools it is made up of work, beyond this ReadMe file, to get started with the SK. However, you will find links to all the different resources used to bring this about further down in this ReadMe. 
 
 We highly recommend that you DYOR (`Do Your Own Research`) on these and familiarise yourself with them.
-<details> <summary>Expand for Features</summary>
-</details>
+
 
 ## Installation Steps
 
@@ -148,12 +141,12 @@ It ensures your money is protected from surveillance, censorship, and confiscati
 
 > ***Digital Education - A colllection of Digitial Media Based Education around Bitcoin***
 
-[The World’s First Kids Cartoon about Bitcoin!](https://www.youtube.com/watch?v=_ekzsZZGfsk) by Tuttle Twins 
+- [The World’s First Kids Cartoon about Bitcoin!](https://www.youtube.com/watch?v=_ekzsZZGfsk) by Tuttle Twins 
 
 </details>
 
 </details>
-
+```
 ## Quick Start Guides
 
 <details> <summary>Quick Start Guides</summary>
@@ -163,7 +156,7 @@ Project demo URL helps the viewer to see live projects easily. We can also use t
 We have brought together Quick Start Guides for all the Tools mentioned above to make it easier to get started & make the most out of your journey with your #SK.
 
 </details>
-
+```
 ## A few ways to help & info on proceeds
 
 This is a passion project first & foremost, so I thank you all for your interest in the #SK & how to go about assisting us in continuing to make it a reality.
