@@ -5,7 +5,7 @@ The #SK is a collection of free & open-source (FOSS) tools that enhances your co
 
 Why create the SovereignKey? 
 
-Because there are multiple ways to bring about liberation & the emancipation of information. Doing so while subsequently enabling the usage of tools in a manner that keeps you safe & private, is one such method I wanted to explore. I wanted to see the SK exist because I wanted to solve the problem of effectvley putting the future in the hands of those who will live in it. 
+Because there are multiple ways to bring about liberation & the emancipation of information. Doing so while subsequently enabling the usage of tools in a manner that keeps you safe & private, is one such method I wanted to explore. I wanted to see the SK exist because I wanted to solve the problem of effectively putting the future in the hands of those who will live in it. 
 
 SK is the ideal solution for managing your digital value privately & securely, yet still affordably.
 
