@@ -163,6 +163,6 @@ A portion of all sales will therefore be donated to all of the contributors to t
 
 This is in no way a comprehensive list, however, it will be updated with more information as we discover the issues reported:
 
-- Tails does not start at all on Mac models that use the Apple M1 chip and on many other Mac models. Here is a list of all current Known Issues with trying to get Tails to boot on various hardware.
+- Tails does not start at all on Mac models that use the Apple M1 chip and on many other Mac models.
 
 </details>
