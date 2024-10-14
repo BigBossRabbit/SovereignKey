@@ -1,19 +1,20 @@
 # SovereignKey (#SK) 
 
-The #SK is a collection of free & open-source (FOSS) tools that enhances your control & privacy in the digital realm. It achieves this by transforming any computer it is plugged into, and booted from, into a secure & self-managed device for almost all your security focused computer needs, including the management of your Bitcoin interactions via an arry of options.
+The #SK is a collection of free & open-source (FOSS) tools that enhances your control & privacy in the digital realm. It achieves this by transforming any computer it is plugged into, and booted from, into a secure & self-managed device for almost all your security focused computer needs, including the management of your Bitcoin interactions via an arry of options using the Tor network.
 
-Encased within an ordinary USB drive (varrying GB options to come), it offers discreet security & seamless integration as it boots from an Operating System (OS) know to focus on user sovereignty & the utilization of battle-tested FOSS privacy tools. 
+Why create the SovereignKey? 
+
+Because there are multiple ways to bring about liberation & the emancipation of information. Doing so while subsequently enabling the usage of tools in a manner that keeps you safe & private, is one such method I wanted to explore. I wanted to see the SK exist because I wanted to solve the problem of effectvley putting the future in the hands of those who will live in it. 
 
 SK is the ideal solution for managing your digital value privately & securely, yet still affordably.
 
 ## Features
 
-The SK is essentially a collection of Free & Open Source tools that act as a secure utility for anyone & everyone who chooses to use it, for their Bitcoin interaction as well as secure computing over the Tor network.
+Encased within an ordinary USB drive (varrying GB options to come), it offers discreet security & seamless integration as it boots from an Operating System (OS) know to focus on user sovereignty & the utilization of battle-tested FOSS privacy tools. 
 
-It does not require any prior knowledge of how all the tools it is made up of work, beyond this ReadMe file, to get started with the SK. However, you will find links to all the different resources used to bring this about further down in this ReadMe. 
+It does not require any prior special knowledge of how all the tools it is made up of work, beyond this ReadMe file, to get started with the SK. However, you will find links to all the different resources used to bring this about further down in this ReadMe. 
 
 We highly recommend that you DYOR (`Do Your Own Research`) on these and familiarise yourself with them.
-
 
 ## Installation Steps
 
@@ -125,7 +126,7 @@ It ensures your money is protected from surveillance, censorship, and confiscati
 
 >***Free Books - A collection of curated Books around Bitcoin & Financial Literacy.***
 
-- [The Bitcoin Whitepaper in various Languages](https://exonumia.africa) by Satoshi Nakamoto
+- [The Bitcoin Whitepaper (Available in various Languages](https://exonumia.africa) by Satoshi Nakamoto
 
 - [2nd Edition: The Simplest Bitcoin Book Ever Written](https://d.nostr.build/tIkvB3qVy5jVkH48.pdf) by Keysa Luna
   
@@ -133,39 +134,27 @@ It ensures your money is protected from surveillance, censorship, and confiscati
 
 - [The Bitcoin Standard](https://worldfreebooks.com/book/the-bitcoin-standard-by-saifedean-ammous/) by Saifedean Ammous
 
-- [Inventing Bitcoin](url) by Yan Pritzker
-
-- [Bitcoin For Business](url) by Student of Bitcoin 
+- [Bitcoin For Business](https://studentofbitcoin.gumroad.com/l/bitcoinforbusinesses?layout=profile) by Student of Bitcoin 
 
 - [Codex32 - Shamir Secret Sharing Scheme](https://secretcodex32.com/docs/index.html) by Leon Olsson Curr & Pearlwart Snead
 
-> ***Digital Education - A colllection of Digitial Media Based Education around Bitcoin***
+> ***Digital Education - Digitial Media Based Education around Bitcoin & Financial Literacy***
 
 - [The World’s First Kids Cartoon about Bitcoin!](https://www.youtube.com/watch?v=_ekzsZZGfsk) by Tuttle Twins 
 
 </details>
 
 </details>
-```
-## Quick Start Guides
 
-<details> <summary>Quick Start Guides</summary>
-
-Project demo URL helps the viewer to see live projects easily. We can also use this to show live previews to prospective interviewers quickly during interviews.
-
-We have brought together Quick Start Guides for all the Tools mentioned above to make it easier to get started & make the most out of your journey with your #SK.
-
-</details>
-```
 ## A few ways to help & info on proceeds
 
-This is a passion project first & foremost, so I thank you all for your interest in the #SK & how to go about assisting us in continuing to make it a reality.
+This is a passion project first & foremost, so I thank you all for your interest in the SovereignKey & how to go about assisting us in continuing to make it a reality.
 
 Since "getting into" Bitcoin back in 2019/2020, I have always wanted to find a way to make a meaningful contribution to its advancement in some way, shape or form. I truly belive the self-custodial ownership & usage of our data & value is the key to our kingdoms & that there is a lot more we can do to ensure there is as little, within our control, being leaked to big or small tech. 
 
 That combined with the burining desire to ensure we can actually get technogoly in the hands of those who need it the most in this current & coming age of tech dominiation, has led me to the #SK, which is my contribution by way of working to be a prudent student, in a time where everyone wants to be the reviered puzzle master.
 
-A portion of all sales will therefore be donated to all of the contributors to the FOSS components of the #SK listed under `Knowledge Transfer` above.
+A portion of all sales will therefore be donated to all of the contributors to the FOSS components of the #SK listed under `Knowledge Transfer` above. However, if you feel moved to, please consider donatiing directly to them.
 
 ## Warnings/Known Issues
 
