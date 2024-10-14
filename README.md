@@ -1,3 +1,4 @@
+![SovereignKey](Logo/SKmedium.jpeg)
 # SovereignKey (#SK) 
 
 The #SK is a collection of free & open-source (FOSS) tools that enhances your control & privacy in the digital realm. It achieves this by transforming any computer it is plugged into, and booted from, into a secure & self-managed device for almost all your security focused computer needs, including the management of your Bitcoin interactions via an arry of options using the Tor network.
