@@ -112,13 +112,13 @@ Combining Tails, Bitcoin Core & the technologies below allow for strong anonymit
 
 [BAILS](https://github.com/BenWestgate/Bails) - Installs Bitcoin Core on the encrypted Persistent Storage of Tails, creates & recovers Bitcoin Core wallets from Codex32 (BIP93) seed backups & creates backup Bails USB sticks & shareable blank Bails USB sticks. 
 
-It ensures your money is protected from surveillance, censorship, and confiscation, leaving no trace of your Bitcoin use on the computer or the Internet.
+It ensures your money is protected from surveillance, censorship & confiscation, leaving no trace of your Bitcoin use on the computer or the Internet.
 
 </details>
 
 <details> <summary>Sparrow Wallet</summary>
 
-[Sparrow Wallet](https://www.sparrowwallet.com) - Sparrow is a Bitcoin wallet for those who value financial self sovereignty. Sparrow’s emphasis is on security, privacy & usability while priding itself on not hiding information from you - on the contrary it attempts to provide as much detail as possible about your transactions & UTXOs, but in a way that is manageable & usable.
+[Sparrow Wallet](https://www.sparrowwallet.com) - Sparrow is a Bitcoin wallet for those who value financial self sovereignty. Sparrow’s emphasis is on security, privacy & usability while priding itself on not hiding information from you. On the contrary, it attempts to provide as much detail as possible about your transactions & UTXOs, but in a way that is manageable & usable.
 
 </details>
 
