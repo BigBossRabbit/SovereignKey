@@ -94,12 +94,12 @@ Email us at [okin@okinent.org](mailto:okin@okinent.org), and we’ll follow up o
 
 The SovereignKey combines powerful, open-source technologies to create a "Swiss Army Knife" for digital sovereignty:  
 
-- **Tails OS**: A portable operating system protecting against surveillance and censorship via the Tor network.  
-- **Electrum Wallet**: A lightweight Bitcoin wallet focused on speed and simplicity.  
-- **BAILS**: A solution for secure Bitcoin Core installations and backups.  
-- **Sparrow Wallet**: A feature-rich Bitcoin wallet for self-sovereignty.  
-- **SeedSigner Emulator**: A tool for offline Bitcoin seed generation and signing, emulating the functionality of the SeedSigner hardware for enhanced privacy and control.  
-- **VSCodium**: A fully open-source version of Visual Studio Code for secure and private coding environments, free from telemetry concerns.  
+- **[Tails OS](https://tails.boum.org)**: A portable operating system protecting against surveillance and censorship via the Tor network.  
+- **[Electrum Wallet](https://electrum.org)**: A lightweight Bitcoin wallet focused on speed and simplicity.  
+- **[BAILS](https://github.com/bitcoincore-dev/bails)**: A solution for secure Bitcoin Core installations and backups.  
+- **[Sparrow Wallet](https://sparrowwallet.com)**: A feature-rich Bitcoin wallet for self-sovereignty.  
+- **[SeedSigner Emulator](https://seedsigner.com)**: A tool for offline Bitcoin seed generation and signing, emulating the functionality of the SeedSigner hardware for enhanced privacy and control.  
+- **[VSCodium](https://vscodium.com)**: A fully open-source version of Visual Studio Code for secure and private coding environments, free from telemetry concerns.  
 
 <details> <summary>Knowledge Transfer</summary>
 
@@ -127,7 +127,19 @@ Since discovering Bitcoin in 2019/2020, I have been driven to make a meaningful 
 
 This vision, combined with a burning desire to get cutting-edge technology into the hands of those who need it most, has led me to create the SovereignKey. This is my contribution to the Bitcoin ecosystem and the ongoing fight for digital sovereignty.  
 
-I encourage you to donate directly to the FOSS components listed under `Technologies Used` and `Knowledge Transfer`. If you feel moved to support the SovereignKey project itself, your contributions will also help us continue developing this vision.  
+### Donate Bitcoin  
+
+If you would like to support the SovereignKey project directly, Bitcoin donations are welcome.  
+
+Scan the QR code below or copy the address to your Bitcoin wallet:
+
+![Bitcoin Donation QR Code](<img src="https://github.com/BigBossRabbit/SovereignKey/blob/main/Logo/btc-donation.jpeg" width=50% height=50%>)
+
+<details> <summary>Bitcoin Donations for the SovereignKey</summary>
+  
+`bc1q9j45w37rswuj02wx2am5eydef9n3xeevya6mw7`  
+
+</details>
 
 ---
 
