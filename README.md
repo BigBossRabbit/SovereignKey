@@ -133,11 +133,10 @@ If you would like to support the SovereignKey project directly, Bitcoin donation
 
 Scan the QR code below or copy the address to your Bitcoin wallet:
 
-![Bitcoin Donation QR Code](<img src="https://github.com/BigBossRabbit/SovereignKey/blob/main/Logo/btc-donation.jpeg" width=50% height=50%>)
-
 <details> <summary>Bitcoin Donations for the SovereignKey</summary>
   
-`bc1q9j45w37rswuj02wx2am5eydef9n3xeevya6mw7`  
+- `PM8TJVXfQHoWyh7ep5H4YzGaRaNBAF83gMt2Fjsgx4MxnbBfwNdyitQd6vMmoHDcBUcr7r22ae1pAyfB2hj1VHWcKURPfuUNNRXQDeCqggA67HYF6nZy`  
+- `lno1zrxq8pjw7qjlm68mtp7e3yvxee4y5xrgjhhyf2fxhlphpckrvevh50u0q20uws7nja2z3q7d2ylcq5pznshjyhljwhyepudhnpqleceepyzlcqszgjw5crtfxd5f6ayefhkyjf3n52z20a3nm74zel54l0g3uvwx967qqv7xv7tkcjq97t5e25l02crh4r9h4fk0xh39lvz9gvw6fyykzz9avcxrwmlucemfw0nrqkkqurqdcc7pz2npqwqvkh7t77wsj332lmvslwu95qdvj6zjhstx3wchgjfll6njnsfkgqqs9w3h7clsnr82uuzgggdxy8xs4s`  
 
 </details>
 
