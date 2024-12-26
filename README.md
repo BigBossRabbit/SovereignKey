@@ -35,10 +35,37 @@ To use the SK, you'll need to boot your computer from the USB device rather than
 4. Access the Boot Menu by tapping/holding the appropriate hotkey.  
 5. Select `Boot from USB/External USB`.  
 6. Wait for Tails OS to load.  
-7. Enter the default `Persistent Storage` passphrase and click `Unlock Encryption`.  
+7. Enter the default `Persistent Storage` passphrase (found along with your SK packaging) and click `Unlock Encryption`.  
 8. Select `Start Tails` on the top right.  
 9. Connect to a local internet network.  
 10. When prompted, select `Connect to Tor`.
+
+---
+
+### Changing the passphrase of the Persistent Storage 
+
+To change the passphrase of your Persistent Storage while insaide Tails on your SK:
+
+1. Choose Applications ▸ Tails ▸ Persistent Storage to open the Persistent Storage settings.
+2. Click on the Change Passphrase button on the left of the title bar. 
+3. Enter the current passphrase in the Current Passphrase text box.
+4. Enter your new passphrase in the New Passphrase text box.
+
+**Warning!** 
+
+```
+It is impossible to recover your passphrase if you forget it!
+To help you remember your passphrase, you can write it down;
+store it in your wallet for a few days;
+then make sure to destroy it once you know it well.
+```
+
+6. Enter your new passphrase again in the Confirm New Passphrase text box.
+7. Click Change.
+
+`You can now restart Tails on your SK and proceede to unlock the Persistent Storage with your new passphrase.`
+
+---
 
 <details> <summary>PC Brands & Associated Hotkeys</summary>
 
@@ -99,7 +126,8 @@ The SovereignKey combines powerful, open-source technologies to create a "Swiss 
 - **[BAILS](https://github.com/bitcoincore-dev/bails)**: A solution for secure Bitcoin Core installations and backups.  
 - **[Sparrow Wallet](https://sparrowwallet.com)**: A feature-rich Bitcoin wallet for self-sovereignty.  
 - **[SeedSigner Emulator](https://seedsigner.com)**: A tool for offline Bitcoin seed generation and signing, emulating the functionality of the SeedSigner hardware for enhanced privacy and control.  
-- **[VSCodium](https://vscodium.com)**: A fully open-source version of Visual Studio Code for secure and private coding environments, free from telemetry concerns.  
+- **[VSCodium](https://vscodium.com)**: A fully open-source version of Visual Studio Code for secure and private coding environments, free from telemetry concerns.
+- A number of other `Free PDFs/Books`, because we'd rather ask for forgivness than for permission. 
 
 <details> <summary>Knowledge Transfer</summary>
 
