@@ -60,8 +60,8 @@ store it in your wallet for a few days;
 then make sure to destroy it once you know it well.
 ```
 
-6. Enter your new passphrase again in the Confirm New Passphrase text box.
-7. Click Change.
+5. Enter your new passphrase again in the Confirm New Passphrase text box.
+6. Click Change.
 
 `You can now restart Tails on your SK and proceede to unlock the Persistent Storage with your new passphrase.`
 
