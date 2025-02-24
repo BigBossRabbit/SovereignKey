@@ -123,7 +123,7 @@ The SovereignKey combines powerful, open-source technologies to create a "Swiss 
 
 - **[Tails OS](https://tails.boum.org)**: A portable operating system protecting against surveillance and censorship via the Tor network.  
 - **[Electrum Wallet](https://electrum.org)**: A lightweight Bitcoin wallet focused on speed and simplicity.  
-- **[BAILS](https://github.com/bitcoincore-dev/bails)**: A solution for secure Bitcoin Core installations and backups.  
+- **[CipherStick (formerly known as "Bails")](https://github.com/bitcoincore-dev/bails)**: CipherStick is a Bitcoin solution protecting against surveillance, censorship, and confiscation.   
 - **[Sparrow Wallet](https://sparrowwallet.com)**: A feature-rich Bitcoin wallet for self-sovereignty.  
 - **[SeedSigner Emulator](https://seedsigner.com)**: A tool for offline Bitcoin seed generation and signing, emulating the functionality of the SeedSigner hardware for enhanced privacy and control.  
 - **[VSCodium](https://vscodium.com)**: A fully open-source version of Visual Studio Code for secure and private coding environments, free from telemetry concerns.
