@@ -1,4 +1,6 @@
-<img src="Logo/SK%20Logo.jpeg" width="50%"/>
+<p align="center">
+  <img src="Logo/SK%20Logo.jpeg" width="50%"/>
+</p>
 
 # SovereignKey (#SK)
 
