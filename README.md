@@ -1,4 +1,4 @@
-![SovereignKey](Logo/SK Logo.jpeg)
+![SovereignKey](Logo/SK%20Logo.jpeg))
 
 # SovereignKey (#SK)
 
