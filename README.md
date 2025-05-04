@@ -1,4 +1,4 @@
-![SovereignKey]<img src="Logo/SK%20Logo.jpeg" width="50%"/>
+<img src="Logo/SK%20Logo.jpeg" width="50%"/>
 
 # SovereignKey (#SK)
 
