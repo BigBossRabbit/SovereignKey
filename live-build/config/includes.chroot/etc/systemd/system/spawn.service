@@ -1,0 +1,37 @@
+[Unit]
+Description=Spawn AI Agent Daemon
+Documentation=https://github.com/BigBossRabbit/SovereignKey
+After=network.target tor.service spawn-tor-gateway.service
+Requires=tor.service
+Wants=spawn-tor-gateway.service
+
+[Service]
+Type=simple
+User=spawn
+Group=spawn
+WorkingDirectory=/home/spawn
+EnvironmentFile=-/etc/spawn/spawn.env
+Environment=SPAWN_CONFIG=/etc/spawn/config.yml
+Environment=SPAWN_DATA_DIR=/home/spawn/.spawn
+Environment=SPAWN_LOG_DIR=/var/log/spawn
+Environment=http_proxy=socks5://127.0.0.1:9050
+Environment=https_proxy=socks5://127.0.0.1:9050
+Environment=PYTHONPATH=/usr/local/share/spawnos
+
+ExecStartPre=/usr/local/bin/spawn-preflight
+ExecStart=/usr/local/bin/spawn-daemon
+ExecStop=/usr/local/bin/spawn-shutdown
+Restart=on-failure
+RestartSec=5s
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=spawn
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/spawn /var/log/spawn
+
+[Install]
+WantedBy=multi-user.target

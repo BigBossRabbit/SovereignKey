@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# spawn-preflight — Pre-start checks before spawn.service launches
+mkdir -p /home/spawn/.spawn /home/spawn/.spawn/bitcoin /var/log/spawn /var/run/spawn
+chown -R spawn:spawn /home/spawn/.spawn /var/log/spawn /var/run/spawn 2>/dev/null || true
+timeout 5 bash -c 'until nc -z 127.0.0.1 9050; do sleep 1; done' || \
+  echo "WARNING: Tor SOCKS not available"
+exit 0

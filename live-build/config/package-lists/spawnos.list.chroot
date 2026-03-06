@@ -1,0 +1,95 @@
+# SpawnOS Package List
+# Used by live-build to install packages during ISO build
+
+# === CORE SYSTEM ===
+sudo
+curl
+wget
+git
+vim
+nano
+htop
+net-tools
+iproute2
+iputils-ping
+nftables
+openssh-client
+rsync
+unzip
+zip
+tar
+gnupg
+gnupg2
+cryptsetup
+lvm2
+parted
+
+# === TOR & PRIVACY ===
+tor
+torsocks
+obfs4proxy
+nyx
+proxychains4
+macchanger
+bleachbit
+
+# === DESKTOP ENVIRONMENT ===
+xfce4
+xfce4-goodies
+xfce4-terminal
+lightdm
+xorg
+fonts-noto
+fonts-noto-color-emoji
+papirus-icon-theme
+
+# === PYTHON (for Spawn) ===
+python3
+python3-pip
+python3-venv
+python3-dev
+python3-setuptools
+python3-wheel
+python3-requests
+python3-cryptography
+python3-yaml
+
+# === NODE.JS (for Spawn) ===
+nodejs
+npm
+
+# === BITCOIN TOOLS DEPS ===
+openjdk-17-jre
+libssl-dev
+libgmp-dev
+libusb-1.0-0-dev
+
+# === SECURITY TOOLS ===
+nmap
+wireshark
+aircrack-ng
+tcpdump
+netcat-openbsd
+whois
+dnsutils
+
+# === DEV TOOLS ===
+build-essential
+gcc
+g++
+make
+cmake
+
+# === HARDWARE ===
+firmware-linux
+firmware-linux-nonfree
+firmware-iwlwifi
+firmware-realtek
+linux-headers-amd64
+
+# === UTILITIES ===
+keepassxc
+qrencode
+zbar-tools
+imagemagick
+evince

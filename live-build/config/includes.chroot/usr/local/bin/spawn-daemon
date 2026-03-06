@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# spawn-daemon — Launches the Spawn AI agent process (called by spawn.service)
+
+SPAWN_CONFIG="/etc/spawn/config.yml"
+SPAWN_DATA="/home/spawn/.spawn"
+SPAWN_LOG="/var/log/spawn/spawn.log"
+
+mkdir -p /var/log/spawn /var/run/spawn
+
+echo "[$(date -Iseconds)] SpawnOS daemon starting..." >> "$SPAWN_LOG"
+
+# Wait for Tor SOCKS
+timeout 30 bash -c 'until nc -z 127.0.0.1 9050; do sleep 2; done' 2>/dev/null || \
+  echo "[$(date -Iseconds)] WARNING: Tor not ready" >> "$SPAWN_LOG"
+
+# Locate and launch Spawn agent (Python or Node)
+if [ -f "$SPAWN_DATA/agent/main.py" ]; then
+  exec python3 "$SPAWN_DATA/agent/main.py" --config "$SPAWN_CONFIG"
+elif [ -f "$SPAWN_DATA/agent/index.js" ]; then
+  exec node "$SPAWN_DATA/agent/index.js" --config "$SPAWN_CONFIG"
+elif [ -f "/usr/local/share/spawnos/agent/main.py" ]; then
+  exec python3 "/usr/local/share/spawnos/agent/main.py" --config "$SPAWN_CONFIG"
+else
+  echo "[$(date -Iseconds)] Spawn agent not found. Run: spawnkey init" >> "$SPAWN_LOG"
+  while true; do sleep 60; done
+fi

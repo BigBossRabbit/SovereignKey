@@ -1,0 +1,8 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Electrum
+Comment=Lightweight Bitcoin wallet — Tor-routed
+Exec=spawnkey launch electrum
+Icon=electrum
+Categories=Finance;

@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# spawn-client — Send tasks to the running Spawn agent
+SPAWN_SOCKET="/var/run/spawn/spawn.sock"
+SPAWN_API_PORT=7731
+case "$1" in
+  task)
+    shift; TASK="$*"
+    if [ -S "$SPAWN_SOCKET" ]; then
+      echo "{\"type\":\"task\",\"content\":\"$TASK\"}" | nc -U "$SPAWN_SOCKET"
+    else
+      curl -s -X POST "http://127.0.0.1:$SPAWN_API_PORT/task" \
+        -H "Content-Type: application/json" \
+        -d "{\"content\":\"$TASK\"}" 2>/dev/null || \
+        echo "Spawn agent not reachable. Run: spawnkey agent status"
+    fi ;;
+  *) echo "Usage: spawn-client task <text>" ;;
+esac

@@ -1,0 +1,8 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=SpawnKey
+Comment=Control the Spawn AI agent and SpawnOS tools
+Exec=xfce4-terminal -e "spawnkey status"
+Icon=spawnos
+Categories=System;Security;

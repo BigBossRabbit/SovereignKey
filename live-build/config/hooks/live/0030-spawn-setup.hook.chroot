@@ -1,0 +1,21 @@
+#!/bin/bash
+# SpawnOS Spawn Setup Hook
+
+set -e
+echo "[SpawnOS] Setting up Spawn integration..."
+
+useradd --system --create-home --home-dir /home/spawn --shell /bin/bash spawn 2>/dev/null || true
+usermod -aG audio,video,netdev,plugdev spawn 2>/dev/null || true
+
+mkdir -p /home/spawn/.spawn/bitcoin /home/spawn/.spawn/plugins /var/log/spawn /var/run/spawn
+chown -R spawn:spawn /home/spawn /var/log/spawn /var/run/spawn
+
+systemctl enable tor.service 2>/dev/null || true
+systemctl enable spawnos-firewall.service 2>/dev/null || true
+systemctl enable spawn-tor-gateway.service 2>/dev/null || true
+systemctl enable spawn.service 2>/dev/null || true
+
+# sk alias
+ln -sf /usr/local/bin/spawnkey /usr/local/bin/sk 2>/dev/null || true
+
+echo "[SpawnOS] Spawn setup complete"

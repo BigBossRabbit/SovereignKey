@@ -1,0 +1,60 @@
+#!/bin/bash
+# SpawnOS Bitcoin Tools Hook
+# Direct installs only — no third-party management, no donation prompts
+
+set -e
+
+SPARROW_VERSION="2.0.0"
+ELECTRUM_VERSION="4.5.4"
+LIANA_VERSION="7.0"
+
+echo "[SpawnOS] Installing Bitcoin tools..."
+
+# Sparrow Wallet
+curl -fSL --retry 3 --max-time 120 \
+  "https://github.com/sparrowwallet/sparrow/releases/download/${SPARROW_VERSION}/sparrow_${SPARROW_VERSION}-1_amd64.deb" \
+  -o /tmp/sparrow.deb && dpkg -i /tmp/sparrow.deb || apt-get install -f -y
+rm -f /tmp/sparrow.deb
+
+# Sparrow: disable update checks and prompts at config level
+mkdir -p /etc/skel/.sparrow
+cat > /etc/skel/.sparrow/config << 'SPARROW_CFG'
+{"checkNewVersion": false, "openWalletsInNewWindows": false}
+SPARROW_CFG
+
+# Electrum
+curl -fSL --retry 3 --max-time 180 \
+  "https://download.electrum.org/${ELECTRUM_VERSION}/electrum-${ELECTRUM_VERSION}-x86_64.AppImage" \
+  -o /usr/local/bin/electrum && chmod +x /usr/local/bin/electrum
+
+# Electrum: disable donation button and update checks
+mkdir -p /etc/skel/.electrum
+cat > /etc/skel/.electrum/config << 'ELECTRUM_CFG'
+{"auto_connect": false, "check_updates": false, "proxy": "socks5:127.0.0.1:9050:", "show_donate_button": false}
+ELECTRUM_CFG
+
+# Liana
+mkdir -p /opt/liana
+curl -fSL --retry 3 --max-time 120 \
+  "https://github.com/wizardsardine/liana/releases/download/v${LIANA_VERSION}/liana-${LIANA_VERSION}-x86_64.tar.gz" \
+  -o /tmp/liana.tar.gz && tar -xzf /tmp/liana.tar.gz -C /opt/liana --strip-components=1
+chmod +x /opt/liana/Liana 2>/dev/null || true
+ln -sf /opt/liana/Liana /usr/local/bin/liana 2>/dev/null || true
+rm -f /tmp/liana.tar.gz
+
+# SeedSigner Emulator
+pip3 install --break-system-packages --no-cache-dir pillow pygame qrcode embit 2>/dev/null || true
+git clone --depth 1 https://github.com/SeedSigner/seedsigner /opt/seedsigner-emulator 2>/dev/null || true
+
+# VSCodium
+curl -fSL "https://gitlab.com/paulcarroty/vscodium-deb-rpm-repo/raw/master/pub.gpg" | \
+  gpg --dearmor > /usr/share/keyrings/vscodium.gpg 2>/dev/null || true
+echo "deb [ signed-by=/usr/share/keyrings/vscodium.gpg ] https://paulcarroty.gitlab.io/vscodium-deb-rpm-repo/debs vscodium main" \
+  > /etc/apt/sources.list.d/vscodium.list
+apt-get update -qq && apt-get install -y codium 2>/dev/null || true
+
+# Native Bitcoin storage dirs
+mkdir -p /etc/skel/.spawn/bitcoin/seeds /etc/skel/.spawn/bitcoin/psbt /etc/skel/.spawn/bitcoin/backups
+chmod 700 /etc/skel/.spawn/bitcoin/seeds /etc/skel/.spawn/bitcoin/psbt /etc/skel/.spawn/bitcoin/backups
+
+echo "[SpawnOS] Bitcoin tools installation complete"

@@ -1,0 +1,13 @@
+[Unit]
+Description=Spawn Tor Traffic Gateway
+After=tor.service
+Requires=tor.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/bin/spawn-tor-gateway start
+ExecStop=/usr/local/bin/spawn-tor-gateway stop
+
+[Install]
+WantedBy=multi-user.target

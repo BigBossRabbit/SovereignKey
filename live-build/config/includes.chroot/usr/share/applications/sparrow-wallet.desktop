@@ -1,0 +1,8 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Sparrow Wallet
+Comment=Bitcoin wallet — Tor-routed via SpawnOS
+Exec=spawnkey launch sparrow
+Icon=sparrow
+Categories=Finance;

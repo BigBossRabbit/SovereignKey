@@ -1,0 +1,42 @@
+# SpawnOS Build Artifacts
+dist/
+*.iso
+*.img
+build.log
+live-build/.build/
+live-build/cache/
+live-build/chroot/
+live-build/binary/
+live-build/config/binary
+live-build/config/bootstrap
+live-build/config/chroot
+live-build/config/common
+live-build/config/source
+
+# Spawn agent code — never committed here
+# Sync from ~/Documents/Spawn/spawn using scripts/sync-spawn.sh
+live-build/config/includes.chroot/usr/local/share/spawnos/agent/
+
+# Secrets — never commit
+*.key
+*.gpg
+*.env.local
+**/api.key
+
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*~
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Node
+node_modules/

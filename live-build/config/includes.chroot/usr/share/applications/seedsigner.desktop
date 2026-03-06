@@ -1,0 +1,8 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=SeedSigner Emulator
+Comment=Offline Bitcoin seed generation and PSBT signing
+Exec=spawnkey launch seedsigner
+Icon=seedsigner
+Categories=Finance;Security;

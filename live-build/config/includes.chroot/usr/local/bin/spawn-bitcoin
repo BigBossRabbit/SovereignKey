@@ -1,0 +1,127 @@
+#!/usr/bin/env bash
+# =============================================================================
+#  spawn-bitcoin — SpawnOS Native Bitcoin Storage Manager
+#  Encrypted seed storage, PSBT management, QR export
+#  No third-party branding. No popups. No donation prompts. Ever.
+# =============================================================================
+
+set -euo pipefail
+
+BITCOIN_DIR="/home/spawn/.spawn/bitcoin"
+SEEDS_DIR="$BITCOIN_DIR/seeds"
+PSBT_DIR="$BITCOIN_DIR/psbt"
+BACKUP_DIR="$BITCOIN_DIR/backups"
+
+RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
+CYAN='\033[0;36m'; BOLD='\033[1m'; NC='\033[0m'
+
+init_dirs() {
+  mkdir -p "$SEEDS_DIR" "$PSBT_DIR" "$BACKUP_DIR"
+  chmod 700 "$BITCOIN_DIR" "$SEEDS_DIR" "$PSBT_DIR" "$BACKUP_DIR"
+}
+
+encrypt_seed() {
+  local name="$1"
+  local output="$SEEDS_DIR/${name}.seed.gpg"
+  [ -f "$output" ] && { echo -e "${RED}Seed '$name' already exists${NC}"; return 1; }
+  echo -e "${YELLOW}Enter seed phrase (hidden):${NC}"; read -s seed_phrase; echo ""
+  [ -z "$seed_phrase" ] && { echo -e "${RED}No seed entered. Aborted.${NC}"; return 1; }
+  echo -e "${YELLOW}Confirm:${NC}"; read -s seed_confirm; echo ""
+  [ "$seed_phrase" != "$seed_confirm" ] && { echo -e "${RED}Mismatch. Aborted.${NC}"; unset seed_phrase seed_confirm; return 1; }
+  echo "$seed_phrase" | gpg --symmetric --cipher-algo AES256 --s2k-digest-algo SHA512 --armor --output "$output"
+  unset seed_phrase seed_confirm
+  chmod 600 "$output"
+  echo -e "${GREEN}✓ Seed '$name' encrypted and stored${NC}"
+  echo -e "${YELLOW}CRITICAL: In amnesic mode this will not survive reboot.${NC}"
+}
+
+decrypt_seed() {
+  local name="$1"
+  local input="$SEEDS_DIR/${name}.seed.gpg"
+  [ ! -f "$input" ] && { echo -e "${RED}Seed '$name' not found${NC}"; list_seeds; return 1; }
+  echo -e "${YELLOW}WARNING: Seed will appear on screen. Ensure no one can see your display.${NC}"
+  read -p "Continue? [y/N] " confirm; [ "$confirm" = "y" ] || { echo "Aborted."; return 0; }
+  echo ""
+  echo -e "${BOLD}=== SEED PHRASE ===${NC}"
+  gpg --decrypt "$input" 2>/dev/null
+  echo -e "${BOLD}=== END ===${NC}"
+  echo -e "${YELLOW}Run 'clear' when done.${NC}"
+}
+
+list_seeds() {
+  echo -e "${BOLD}Stored encrypted seeds:${NC}"
+  if ls "$SEEDS_DIR"/*.seed.gpg &>/dev/null 2>&1; then
+    for f in "$SEEDS_DIR"/*.seed.gpg; do
+      name=$(basename "$f" .seed.gpg)
+      echo "  → $name"
+    done
+  else
+    echo "  None stored yet. Use: spawn-bitcoin seed store <name>"
+  fi
+}
+
+delete_seed() {
+  local name="$1"; local target="$SEEDS_DIR/${name}.seed.gpg"
+  [ ! -f "$target" ] && { echo -e "${RED}Not found: $name${NC}"; return 1; }
+  echo -e "${RED}WARNING: This permanently deletes '$name'${NC}"
+  read -p "Type the seed name to confirm: " confirm
+  [ "$confirm" = "$name" ] && { shred -u "$target"; echo -e "${GREEN}✓ Deleted${NC}"; } || echo "Aborted."
+}
+
+seed_to_qr() {
+  local name="$1"; local input="$SEEDS_DIR/${name}.seed.gpg"; local output="/tmp/spawn-qr-${name}.png"
+  [ ! -f "$input" ] && { echo -e "${RED}Not found: $name${NC}"; return 1; }
+  command -v qrencode &>/dev/null || { echo -e "${RED}qrencode not installed${NC}"; return 1; }
+  gpg --decrypt "$input" 2>/dev/null | qrencode -o "$output" -t PNG -s 10
+  echo -e "${GREEN}✓ QR: $output${NC}"
+  echo -e "${YELLOW}Delete when done: shred -u $output${NC}"
+}
+
+import_psbt() {
+  local psbt_file="$1"; local name="${2:-psbt-$(date +%Y%m%d-%H%M%S)}"
+  [ ! -f "$psbt_file" ] && { echo -e "${RED}File not found: $psbt_file${NC}"; return 1; }
+  cp "$psbt_file" "$PSBT_DIR/${name}.psbt"; chmod 600 "$PSBT_DIR/${name}.psbt"
+  echo -e "${GREEN}✓ PSBT '$name' imported${NC}"; echo "  Open in Sparrow: spawnkey launch sparrow"
+}
+
+backup() {
+  local out="$BACKUP_DIR/spawnos-bitcoin-backup-$(date +%Y%m%d-%H%M%S).tar.gpg"
+  tar -czf - --exclude="$BACKUP_DIR" "$BITCOIN_DIR" 2>/dev/null | \
+    gpg --symmetric --cipher-algo AES256 --s2k-digest-algo SHA512 --armor --output "$out"
+  chmod 600 "$out"
+  echo -e "${GREEN}✓ Backup: $out${NC}"
+  echo "Copy to external encrypted storage before shutdown."
+}
+
+usage() {
+  echo -e "${CYAN}${BOLD}spawn-bitcoin — SpawnOS Bitcoin Storage${NC}"
+  echo ""
+  echo "  seed store <n>       Encrypt and store a seed phrase"
+  echo "  seed show <n>        Decrypt and display a seed"
+  echo "  seed list            List stored seeds"
+  echo "  seed delete <n>      Securely shred a seed"
+  echo "  seed qr <n>          Generate QR for SeedSigner"
+  echo "  psbt import <file>   Import PSBT file"
+  echo "  backup               Encrypted backup of all bitcoin data"
+  echo ""
+}
+
+init_dirs
+case "${1:-help}" in
+  seed)
+    case "$2" in
+      store)  encrypt_seed "${3:?Usage: seed store <name>}" ;;
+      show)   decrypt_seed "${3:?Usage: seed show <name>}" ;;
+      list)   list_seeds ;;
+      delete) delete_seed "${3:?Usage: seed delete <name>}" ;;
+      qr)     seed_to_qr "${3:?Usage: seed qr <name>}" ;;
+      *)      usage ;;
+    esac ;;
+  psbt)
+    case "$2" in
+      import) import_psbt "${3:?Usage: psbt import <file>}" "${4:-}" ;;
+      *)      usage ;;
+    esac ;;
+  backup) backup ;;
+  *)      usage ;;
+esac

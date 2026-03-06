@@ -1,0 +1,13 @@
+[Unit]
+Description=SpawnOS Firewall and Tor Routing Rules
+Before=network.target
+After=local-fs.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/bin/spawnos-firewall start
+ExecStop=/usr/local/bin/spawnos-firewall stop
+
+[Install]
+WantedBy=multi-user.target

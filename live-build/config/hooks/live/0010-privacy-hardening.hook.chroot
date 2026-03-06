@@ -1,0 +1,29 @@
+#!/bin/bash
+# SpawnOS Privacy Hardening Hook
+
+set -e
+echo "[SpawnOS] Applying privacy hardening..."
+
+cat > /etc/sysctl.d/99-spawnos-privacy.conf << 'SYSCTL'
+net.ipv6.conf.all.disable_ipv6 = 1
+net.ipv6.conf.default.disable_ipv6 = 1
+net.ipv4.conf.all.accept_redirects = 0
+net.ipv4.conf.default.accept_redirects = 0
+net.ipv4.conf.all.send_redirects = 0
+net.ipv4.tcp_syncookies = 1
+net.ipv4.tcp_rfc1337 = 1
+net.ipv4.conf.all.rp_filter = 1
+net.ipv4.conf.default.rp_filter = 1
+kernel.randomize_va_space = 2
+SYSCTL
+
+mkdir -p /etc/NetworkManager/conf.d/
+cat > /etc/NetworkManager/conf.d/99-spawnos-mac.conf << 'NM'
+[device]
+wifi.scan-rand-mac-address=yes
+[connection]
+wifi.cloned-mac-address=random
+ethernet.cloned-mac-address=random
+NM
+
+echo "[SpawnOS] Privacy hardening complete"

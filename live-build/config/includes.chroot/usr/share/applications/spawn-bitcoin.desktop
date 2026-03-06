@@ -1,0 +1,8 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=SpawnOS Bitcoin Storage
+Comment=Encrypted seed storage and PSBT management
+Exec=xfce4-terminal -e "spawn-bitcoin"
+Icon=bitcoin
+Categories=Finance;Security;

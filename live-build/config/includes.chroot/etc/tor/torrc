@@ -1,0 +1,14 @@
+# SpawnOS Tor Configuration
+
+TransPort 9040
+TransListenAddress 127.0.0.1
+DNSPort 5353
+DNSListenAddress 127.0.0.1
+SocksPort 9050
+ControlPort 9051
+CookieAuthentication 1
+
+NumCPUs 2
+CircuitBuildTimeout 30
+ExitRelay 0
+RefuseUnknownExits 1

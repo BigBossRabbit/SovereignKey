@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# spawn-shutdown — Graceful Spawn shutdown
+[ -f /var/run/spawn/spawn.pid ] && kill -SIGTERM "$(cat /var/run/spawn/spawn.pid)" 2>/dev/null
+echo "[$(date -Iseconds)] Spawn agent stopped" >> /var/log/spawn/spawn.log

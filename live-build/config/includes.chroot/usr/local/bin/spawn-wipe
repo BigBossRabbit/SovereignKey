@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# spawn-wipe — Secure wipe of session data
+find /tmp -name "spawn-*" -exec shred -u {} \; 2>/dev/null
+find /var/run/spawn -name "*.tmp" -exec shred -u {} \; 2>/dev/null
+sync
+echo "Session wipe complete."

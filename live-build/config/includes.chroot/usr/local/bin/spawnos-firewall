@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# spawnos-firewall — Apply/remove SpawnOS nftables rules
+case "$1" in
+  start) nft -f /etc/nftables.d/spawnos.conf && echo "SpawnOS firewall: ACTIVE" ;;
+  stop)  nft flush ruleset && echo "SpawnOS firewall: FLUSHED (WARNING: unprotected)" ;;
+  *)     echo "Usage: $0 {start|stop}" ;;
+esac

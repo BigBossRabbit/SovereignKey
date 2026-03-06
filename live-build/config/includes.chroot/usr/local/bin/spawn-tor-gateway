@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# spawn-tor-gateway — Force all Spawn user traffic through Tor
+
+TOR_UID=$(id -u debian-tor 2>/dev/null || echo "108")
+SPAWN_UID=$(id -u spawn 2>/dev/null || echo "1001")
+TOR_PORT=9040
+TOR_DNS_PORT=5353
+
+start() {
+  nft add table ip spawnos-nat 2>/dev/null || true
+  nft add chain ip spawnos-nat OUTPUT "{ type nat hook output priority 0; }" 2>/dev/null || true
+  nft add rule ip spawnos-nat OUTPUT meta skuid $TOR_UID accept 2>/dev/null || true
+  nft add rule ip spawnos-nat OUTPUT ip daddr "{ 127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 }" accept 2>/dev/null || true
+  nft add rule ip spawnos-nat OUTPUT meta skuid $SPAWN_UID udp dport 53 redirect to :$TOR_DNS_PORT 2>/dev/null || true
+  nft add rule ip spawnos-nat OUTPUT meta skuid $SPAWN_UID tcp redirect to :$TOR_PORT 2>/dev/null || true
+  echo "Spawn Tor gateway: ACTIVE"
+}
+
+stop() {
+  nft delete table ip spawnos-nat 2>/dev/null || true
+  echo "Spawn Tor gateway: STOPPED"
+}
+
+case "$1" in
+  start) start ;;
+  stop)  stop ;;
+  *)     echo "Usage: $0 {start|stop}" ;;
+esac

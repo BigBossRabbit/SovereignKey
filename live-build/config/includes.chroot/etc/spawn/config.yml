@@ -1,0 +1,54 @@
+# SpawnOS — Spawn Agent Configuration
+# /etc/spawn/config.yml
+
+version: "1.0"
+
+agent:
+  name: "SpawnOS Agent"
+  mode: "sovereign"
+  auto_start: true
+  log_level: "info"
+  data_dir: "/home/spawn/.spawn"
+  plugin_dir: "/usr/local/share/spawnos/plugins"
+
+network:
+  tor_enabled: true
+  tor_socks_host: "127.0.0.1"
+  tor_socks_port: 9050
+  clearnet_fallback: false
+  dns_over_tor: true
+
+api:
+  endpoint: ""
+  key_file: "/home/spawn/.spawn/api.key"
+  timeout_seconds: 60
+  max_retries: 3
+
+bitcoin:
+  electrum_path: "/usr/local/bin/electrum"
+  sparrow_path: "/opt/sparrow/bin/Sparrow"
+  liana_path: "/opt/liana/Liana"
+  seedsigner_emulator: "/opt/seedsigner-emulator/src/main.py"
+  data_dir: "/home/spawn/.spawn/bitcoin"
+  electrum_server: ""
+
+security:
+  memory_wipe_on_shutdown: true
+  encrypted_logs: true
+  screen_lock_timeout: 300
+  clipboard_clear_timeout: 30
+
+desktop:
+  theme: "SpawnOS-Dark"
+  wallpaper: "/usr/share/spawnos/branding/wallpaper.png"
+  spawn_panel_widget: true
+
+persistence:
+  encrypted: true
+  mount_point: "/home/spawn"
+
+logging:
+  dir: "/var/log/spawn"
+  max_size_mb: 50
+  rotate_count: 3
+  encrypt_logs: true
