@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=SpawnOS Comms
+GenericName=Sovereign Communications
+Comment=Nostr, BitChat, WhiteNoise — offline mesh between SpawnOS devices
+Exec=xfce4-terminal -e "spawn-comms status"
+Icon=network-wireless
+Categories=Network;Chat;
+Keywords=nostr;bitchat;whitenoise;mesh;sovereign;offline;
+StartupNotify=false

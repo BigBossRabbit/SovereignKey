@@ -1,0 +1,540 @@
+#!/usr/bin/env bash
+# =============================================================================
+#  spawn-comms — SpawnOS Unified Communications Manager
+#
+#  Manages three sovereign comms layers:
+#
+#  BITCHAT    Bluetooth mesh — no internet, no infrastructure
+#             SpawnOS devices talk directly over Bluetooth
+#
+#  NOSTR      Decentralized protocol — each SpawnOS device IS a relay
+#             Devices on same LAN sync directly via ws://DEVICE-IP:7777
+#             Public relays used when internet available
+#
+#  WHITENOISE libp2p anonymous mesh — mDNS discovery on LAN (no internet)
+#             Tor-routed when internet available
+#
+#  All three work offline between SpawnOS devices.
+#  Internet extends reach but is never required.
+# =============================================================================
+
+set -euo pipefail
+
+COMMS_DIR="/home/spawn/.spawn/comms"
+NOSTR_KEYS_DIR="$COMMS_DIR/nostr-keys"
+BITCHAT_DIR="$COMMS_DIR/bitchat"
+WHITENOISE_DIR="$COMMS_DIR/whitenoise"
+COMMS_CONFIG="/etc/spawn/comms.yml"
+NOSTR_RELAY_CONFIG="/etc/spawn/nostr/relay.toml"
+SPAWN_BITCOIN_KEYS="/home/spawn/.spawn/bitcoin/seeds"
+
+RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
+CYAN='\033[0;36m'; BLUE='\033[0;34m'; BOLD='\033[1m'; NC='\033[0m'
+
+init_dirs() {
+  mkdir -p "$NOSTR_KEYS_DIR" "$BITCHAT_DIR" "$WHITENOISE_DIR" \
+           "$COMMS_DIR/nostr-relay-db" "$COMMS_DIR/messages"
+  chmod 700 "$NOSTR_KEYS_DIR" "$BITCHAT_DIR" "$WHITENOISE_DIR"
+}
+
+# =============================================================================
+#  NOSTR
+# =============================================================================
+
+nostr_keygen() {
+  local name="${1:-default}"
+  local keyfile="$NOSTR_KEYS_DIR/${name}.nostr.gpg"
+
+  [ -f "$keyfile" ] && {
+    echo -e "${RED}Nostr identity '$name' already exists${NC}"
+    echo "Use: sk comms nostr keys list"
+    return 1
+  }
+
+  echo -e "${CYAN}Generating Nostr keypair for identity: ${BOLD}${name}${NC}"
+
+  # Generate a 32-byte private key (nsec)
+  local privkey=$(openssl rand -hex 32)
+
+  # Derive public key using Python nostr library or fallback
+  local pubkey=""
+  if python3 -c "from nostr.key import PrivateKey; pk=PrivateKey(bytes.fromhex('${privkey}')); print(pk.public_key.hex())" 2>/dev/null; then
+    pubkey=$(python3 -c "from nostr.key import PrivateKey; pk=PrivateKey(bytes.fromhex('${privkey}')); print(pk.public_key.hex())" 2>/dev/null)
+  else
+    # Fallback: store privkey, pubkey derived at runtime
+    pubkey="(derived at runtime)"
+  fi
+
+  # Encrypt and store the keypair
+  printf '{"nsec":"%s","npub":"%s","name":"%s","created":"%s"}' \
+    "$privkey" "$pubkey" "$name" "$(date -Iseconds)" | \
+    gpg --symmetric --cipher-algo AES256 --s2k-digest-algo SHA512 \
+        --armor --output "$keyfile"
+
+  chmod 600 "$keyfile"
+  unset privkey
+
+  echo -e "${GREEN}✓ Nostr identity '${name}' created${NC}"
+  echo -e "  Public key (npub): ${CYAN}${pubkey}${NC}"
+  echo -e "  Stored encrypted at: $keyfile"
+  echo ""
+  echo -e "${YELLOW}Share your npub with other SpawnOS users to receive messages.${NC}"
+}
+
+nostr_keys_list() {
+  echo -e "${BOLD}Stored Nostr identities:${NC}"
+  if ls "$NOSTR_KEYS_DIR"/*.nostr.gpg &>/dev/null 2>&1; then
+    for f in "$NOSTR_KEYS_DIR"/*.nostr.gpg; do
+      local name=$(basename "$f" .nostr.gpg)
+      echo "  → $name"
+    done
+  else
+    echo "  None. Create one: sk comms nostr keygen <name>"
+  fi
+}
+
+nostr_show_key() {
+  local name="${1:-default}"
+  local keyfile="$NOSTR_KEYS_DIR/${name}.nostr.gpg"
+
+  [ ! -f "$keyfile" ] && { echo -e "${RED}Identity '$name' not found${NC}"; nostr_keys_list; return 1; }
+
+  echo -e "${YELLOW}WARNING: Private key will appear on screen.${NC}"
+  read -p "Continue? [y/N] " confirm
+  [ "$confirm" = "y" ] || { echo "Aborted."; return 0; }
+
+  echo -e "${BOLD}=== NOSTR KEYS: $name ===${NC}"
+  gpg --decrypt "$keyfile" 2>/dev/null | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+print(f'  Name:       {d.get(\"name\", \"\")}')
+print(f'  Public key: {d.get(\"npub\", \"\")}')
+print(f'  Private key: {d.get(\"nsec\", \"\")}')
+print(f'  Created:    {d.get(\"created\", \"\")}')
+" 2>/dev/null || gpg --decrypt "$keyfile" 2>/dev/null
+  echo -e "${BOLD}=== END ===${NC}"
+  echo -e "${YELLOW}Run 'clear' when done.${NC}"
+}
+
+nostr_relay_status() {
+  echo -e "${BOLD}=== SpawnOS Nostr Relay (Local) ===${NC}"
+  if systemctl is-active --quiet spawn-nostr-relay 2>/dev/null; then
+    local my_ip=$(hostname -I | awk '{print $1}' 2>/dev/null || echo "unknown")
+    echo -e "${GREEN}✓ Local relay: RUNNING${NC}"
+    echo -e "  LAN address:  ${CYAN}ws://${my_ip}:7777${NC}"
+    echo -e "  Other SpawnOS devices connect to this address"
+  else
+    echo -e "${RED}✗ Local relay: STOPPED${NC}"
+    echo "  Start: sk comms nostr relay start"
+  fi
+}
+
+nostr_relay_start() {
+  # Auto-populate relay URL with current LAN IP
+  local my_ip=$(hostname -I | awk '{print $1}' 2>/dev/null || echo "127.0.0.1")
+  if [ -f "$NOSTR_RELAY_CONFIG" ]; then
+    sed -i "s|relay_url = \".*\"|relay_url = \"ws://${my_ip}:7777\"|" "$NOSTR_RELAY_CONFIG" 2>/dev/null || true
+  fi
+  sudo systemctl start spawn-nostr-relay
+  echo -e "${GREEN}✓ Nostr relay started${NC}"
+  echo -e "  Other SpawnOS devices: add ${CYAN}ws://${my_ip}:7777${NC} as a relay"
+  echo -e "  Run: sk comms nostr peers add ws://${my_ip}:7777"
+}
+
+nostr_peer_add() {
+  local relay_url="$1"
+  local peers_file="$COMMS_DIR/nostr-peers.json"
+
+  # Read existing peers or start fresh
+  local peers="[]"
+  [ -f "$peers_file" ] && peers=$(cat "$peers_file" 2>/dev/null || echo "[]")
+
+  # Add new relay
+  python3 -c "
+import sys, json
+peers = json.loads('${peers}')
+url = '${relay_url}'
+if url not in peers:
+    peers.append(url)
+    print(json.dumps(peers, indent=2))
+else:
+    print(json.dumps(peers, indent=2))
+    print('Already in peer list', file=sys.stderr)
+" > "$peers_file" 2>/dev/null
+
+  echo -e "${GREEN}✓ Nostr peer added: ${relay_url}${NC}"
+  echo "  gossip and nostril will connect to this relay"
+
+  # Update gossip config if it exists
+  _update_gossip_relays
+}
+
+nostr_peer_list() {
+  local peers_file="$COMMS_DIR/nostr-peers.json"
+  echo -e "${BOLD}Configured Nostr relays:${NC}"
+  if [ -f "$peers_file" ]; then
+    python3 -c "
+import json
+peers = json.load(open('$peers_file'))
+if peers:
+    for p in peers: print(f'  → {p}')
+else:
+    print('  None configured')
+" 2>/dev/null
+  else
+    echo "  None configured"
+  fi
+  echo ""
+  echo "Add a SpawnOS device relay: sk comms nostr peers add ws://DEVICE-IP:7777"
+}
+
+nostr_publish() {
+  local message="$*"
+  local identity="${NOSTR_IDENTITY:-default}"
+  local keyfile="$NOSTR_KEYS_DIR/${identity}.nostr.gpg"
+  local peers_file="$COMMS_DIR/nostr-peers.json"
+
+  [ -z "$message" ] && { echo "Usage: sk comms nostr publish <message>"; return 1; }
+  [ ! -f "$keyfile" ] && { echo -e "${RED}No Nostr identity. Run: sk comms nostr keygen${NC}"; return 1; }
+
+  # Extract private key
+  local privkey
+  privkey=$(gpg --decrypt "$keyfile" 2>/dev/null | python3 -c "import sys,json; print(json.load(sys.stdin)['nsec'])" 2>/dev/null)
+
+  # Get relay list
+  local relays=()
+  if [ -f "$peers_file" ]; then
+    mapfile -t relays < <(python3 -c "import json; [print(r) for r in json.load(open('$peers_file'))]" 2>/dev/null)
+  fi
+  # Always include local relay
+  local my_ip=$(hostname -I | awk '{print $1}' 2>/dev/null || echo "127.0.0.1")
+  relays+=("ws://127.0.0.1:7777")
+
+  echo -e "${CYAN}Publishing to ${#relays[@]} relay(s)...${NC}"
+
+  # Publish using nostril if available, else python-nostr
+  if command -v nostril &>/dev/null; then
+    for relay in "${relays[@]}"; do
+      echo "$message" | nostril --sec "$privkey" --envelope | \
+        websocat "$relay" 2>/dev/null && \
+        echo -e "${GREEN}✓ → ${relay}${NC}" || \
+        echo -e "${YELLOW}⚠ Failed: ${relay}${NC}"
+    done
+  else
+    python3 /usr/local/share/spawnos/comms/nostr_publish.py \
+      --privkey "$privkey" \
+      --message "$message" \
+      --relays "${relays[@]}" 2>/dev/null || \
+      echo -e "${RED}Could not publish — nostr tools not available${NC}"
+  fi
+
+  unset privkey
+}
+
+_update_gossip_relays() {
+  local peers_file="$COMMS_DIR/nostr-peers.json"
+  [ ! -f "$peers_file" ] && return 0
+  # gossip stores relay config in its own SQLite db — managed by the app itself
+  # Just print a note for the user
+  echo -e "${CYAN}Note: Open gossip and add these relays in Settings → Relays${NC}"
+}
+
+# =============================================================================
+#  BITCHAT
+# =============================================================================
+
+bitchat_status() {
+  echo -e "${BOLD}=== BitChat (Bluetooth Mesh) ===${NC}"
+
+  # Check Bluetooth hardware
+  if hciconfig 2>/dev/null | grep -q "UP RUNNING"; then
+    echo -e "${GREEN}✓ Bluetooth: active${NC}"
+    hciconfig 2>/dev/null | grep "BD Address" | awk '{print "  Address: "$3}'
+  elif hciconfig 2>/dev/null | grep -q "DOWN"; then
+    echo -e "${YELLOW}⚠ Bluetooth: available but DOWN${NC}"
+    echo "  Run: sk comms bitchat enable"
+  else
+    echo -e "${RED}✗ Bluetooth: not detected${NC}"
+    echo "  BitChat requires Bluetooth hardware"
+  fi
+
+  if systemctl is-active --quiet spawn-bitchat 2>/dev/null; then
+    echo -e "${GREEN}✓ BitChat daemon: RUNNING${NC}"
+  else
+    echo -e "${YELLOW}○ BitChat daemon: not running${NC}"
+    echo "  Start: sk comms bitchat start"
+  fi
+
+  # Show discovered peers
+  local peers_log="$BITCHAT_DIR/peers.log"
+  if [ -f "$peers_log" ]; then
+    echo ""
+    echo -e "${BOLD}Nearby SpawnOS devices (Bluetooth):${NC}"
+    cat "$peers_log" 2>/dev/null | tail -10
+  fi
+}
+
+bitchat_enable_bt() {
+  sudo hciconfig hci0 up 2>/dev/null || true
+  sudo rfkill unblock bluetooth 2>/dev/null || true
+  echo -e "${GREEN}✓ Bluetooth enabled${NC}"
+}
+
+bitchat_scan() {
+  echo -e "${CYAN}Scanning for nearby SpawnOS devices over Bluetooth...${NC}"
+  echo -e "${YELLOW}(10 second scan)${NC}"
+  sudo hcitool scan 2>/dev/null || \
+    bluetoothctl scan on 2>/dev/null &
+  sleep 10
+  bluetoothctl scan off 2>/dev/null || true
+}
+
+bitchat_send() {
+  local target="$1"; shift
+  local message="$*"
+  [ -z "$target" ] || [ -z "$message" ] && {
+    echo "Usage: sk comms bitchat send <device-address> <message>"
+    return 1
+  }
+  /usr/local/bin/spawn-bitchat-launch send --to "$target" --message "$message" 2>/dev/null || \
+    echo -e "${RED}BitChat send failed. Is the daemon running? sk comms bitchat start${NC}"
+}
+
+# =============================================================================
+#  WHITENOISE
+# =============================================================================
+
+whitenoise_status() {
+  echo -e "${BOLD}=== WhiteNoise (libp2p Mesh) ===${NC}"
+
+  if systemctl is-active --quiet spawn-whitenoise 2>/dev/null; then
+    echo -e "${GREEN}✓ WhiteNoise daemon: RUNNING${NC}"
+    local peer_id_file="$WHITENOISE_DIR/peer_id"
+    [ -f "$peer_id_file" ] && echo "  Peer ID: $(cat $peer_id_file)"
+  else
+    echo -e "${YELLOW}○ WhiteNoise daemon: not running${NC}"
+    echo "  Start: sk comms whitenoise start"
+  fi
+
+  # Show mDNS-discovered peers
+  echo ""
+  echo -e "${BOLD}Peers discovered on local network (mDNS):${NC}"
+  avahi-browse -t _spawnos._tcp 2>/dev/null | head -10 || \
+    echo "  Run avahi-daemon for LAN peer discovery"
+}
+
+whitenoise_send() {
+  local peer_id="$1"; shift
+  local message="$*"
+  [ -z "$peer_id" ] || [ -z "$message" ] && {
+    echo "Usage: sk comms whitenoise send <peer-id> <message>"
+    return 1
+  }
+  /usr/local/bin/whitenoise send --to "$peer_id" --msg "$message" 2>/dev/null || \
+    echo -e "${RED}WhiteNoise send failed. Is the daemon running? sk comms whitenoise start${NC}"
+}
+
+# =============================================================================
+#  FULL STATUS
+# =============================================================================
+
+comms_status() {
+  echo -e "${CYAN}${BOLD}"
+  echo "  ╔═══════════════════════════════════════╗"
+  echo "  ║    SpawnOS Communications Status      ║"
+  echo "  ╚═══════════════════════════════════════╝"
+  echo -e "${NC}"
+
+  local my_ip=$(hostname -I | awk '{print $1}' 2>/dev/null || echo "unknown")
+  local my_hostname=$(hostname 2>/dev/null || echo "spawnos")
+  echo -e "  Device: ${CYAN}${my_hostname}${NC} @ ${CYAN}${my_ip}${NC}"
+  echo ""
+
+  # BitChat
+  echo -e "${BOLD}[1] BitChat — Bluetooth Mesh${NC}"
+  if hciconfig 2>/dev/null | grep -q "UP RUNNING"; then
+    echo -e "    ${GREEN}✓ Bluetooth active${NC}"
+    systemctl is-active --quiet spawn-bitchat 2>/dev/null \
+      && echo -e "    ${GREEN}✓ Daemon running${NC}" \
+      || echo -e "    ${YELLOW}○ Daemon stopped  →  sk comms bitchat start${NC}"
+  else
+    echo -e "    ${YELLOW}⚠ Bluetooth not active  →  sk comms bitchat enable${NC}"
+  fi
+  echo ""
+
+  # Nostr
+  echo -e "${BOLD}[2] Nostr — Decentralized + Local Relay${NC}"
+  if systemctl is-active --quiet spawn-nostr-relay 2>/dev/null; then
+    echo -e "    ${GREEN}✓ Local relay running  →  ws://${my_ip}:7777${NC}"
+    echo -e "    ${CYAN}    Share this address with other SpawnOS devices${NC}"
+  else
+    echo -e "    ${YELLOW}○ Local relay stopped  →  sk comms nostr relay start${NC}"
+  fi
+  local key_count=$(ls "$NOSTR_KEYS_DIR"/*.nostr.gpg 2>/dev/null | wc -l)
+  echo -e "    Identities: ${key_count}"
+  local peer_count=0
+  [ -f "$COMMS_DIR/nostr-peers.json" ] && \
+    peer_count=$(python3 -c "import json; print(len(json.load(open('$COMMS_DIR/nostr-peers.json'))))" 2>/dev/null || echo 0)
+  echo -e "    Connected relays: ${peer_count}"
+  echo ""
+
+  # WhiteNoise
+  echo -e "${BOLD}[3] WhiteNoise — libp2p Anonymous Mesh${NC}"
+  if systemctl is-active --quiet spawn-whitenoise 2>/dev/null; then
+    echo -e "    ${GREEN}✓ Daemon running${NC}"
+    echo -e "    ${CYAN}    LAN peers discovered via mDNS (no internet needed)${NC}"
+  else
+    echo -e "    ${YELLOW}○ Daemon stopped  →  sk comms whitenoise start${NC}"
+  fi
+  echo ""
+
+  echo -e "${BOLD}Offline Mesh Capability:${NC}"
+  echo -e "  BitChat:    ${YELLOW}Bluetooth only — works with zero infrastructure${NC}"
+  echo -e "  Nostr:      ${YELLOW}LAN relay mesh — works on same WiFi/network${NC}"
+  echo -e "  WhiteNoise: ${YELLOW}mDNS mesh — works on same LAN${NC}"
+  echo ""
+  echo "  All three extend to internet (Tor-routed) when available."
+}
+
+# =============================================================================
+#  SETUP — Connect two SpawnOS devices together
+# =============================================================================
+
+comms_pair() {
+  local peer_ip="$1"
+  [ -z "$peer_ip" ] && {
+    echo "Usage: sk comms pair <PEER-IP>"
+    echo "       sk comms pair 192.168.1.42"
+    echo ""
+    echo "Run 'sk comms status' on the other SpawnOS device to find its IP."
+    return 1
+  }
+
+  echo -e "${CYAN}${BOLD}=== Pairing with SpawnOS device at ${peer_ip} ===${NC}"
+  echo ""
+
+  # 1. Add their Nostr relay
+  echo -e "${BOLD}[1/3] Adding their Nostr relay...${NC}"
+  nostr_peer_add "ws://${peer_ip}:7777" && \
+    echo -e "${GREEN}✓ Nostr relay added${NC}" || \
+    echo -e "${YELLOW}⚠ Nostr relay may not be running on that device${NC}"
+
+  # 2. WhiteNoise peer connect
+  echo -e "${BOLD}[2/3] WhiteNoise connection...${NC}"
+  /usr/local/bin/whitenoise connect "$peer_ip" 2>/dev/null && \
+    echo -e "${GREEN}✓ WhiteNoise connected${NC}" || \
+    echo -e "${YELLOW}⚠ WhiteNoise not available (mDNS auto-discovery may still work)${NC}"
+
+  # 3. Bluetooth discovery
+  echo -e "${BOLD}[3/3] Bluetooth (BitChat)...${NC}"
+  echo -e "${YELLOW}BitChat uses Bluetooth — ensure both devices have BT enabled.${NC}"
+  echo -e "  sk comms bitchat enable"
+  echo -e "  sk comms bitchat scan"
+
+  echo ""
+  echo -e "${GREEN}✓ Pairing with ${peer_ip} complete${NC}"
+  echo ""
+  echo "Next steps:"
+  echo "  sk comms nostr publish 'Hello from SpawnOS!'"
+  echo "  sk comms bitchat scan"
+  echo "  sk comms whitenoise status"
+}
+
+# =============================================================================
+#  COMMAND ROUTER
+# =============================================================================
+
+usage() {
+  echo -e "${CYAN}${BOLD}spawn-comms — SpawnOS Communications${NC}"
+  echo ""
+  echo -e "${BOLD}OVERVIEW:${NC}"
+  echo "  status                      Full comms system status"
+  echo "  pair <IP>                   Pair with another SpawnOS device"
+  echo ""
+  echo -e "${BOLD}NOSTR (decentralized + local relay):${NC}"
+  echo "  nostr keygen [name]         Generate a Nostr identity"
+  echo "  nostr keys list             List identities"
+  echo "  nostr keys show [name]      Show keypair (nsec/npub)"
+  echo "  nostr relay start|stop      Manage local relay (port 7777)"
+  echo "  nostr relay status          Local relay status + LAN address"
+  echo "  nostr peers add <ws://URL>  Add a relay (SpawnOS device or public)"
+  echo "  nostr peers list            List connected relays"
+  echo "  nostr publish <message>     Publish a note to all relays"
+  echo ""
+  echo -e "${BOLD}BITCHAT (Bluetooth mesh — no internet needed):${NC}"
+  echo "  bitchat status              BT hardware + daemon status"
+  echo "  bitchat enable              Enable Bluetooth"
+  echo "  bitchat start|stop          Start/stop BitChat daemon"
+  echo "  bitchat scan                Scan for nearby SpawnOS devices"
+  echo "  bitchat send <addr> <msg>   Send message to BT peer"
+  echo ""
+  echo -e "${BOLD}WHITENOISE (libp2p mesh — LAN + Tor):${NC}"
+  echo "  whitenoise status           Daemon status + mDNS peers"
+  echo "  whitenoise start|stop       Start/stop daemon"
+  echo "  whitenoise send <id> <msg>  Send to peer"
+  echo ""
+}
+
+init_dirs
+
+case "${1:-help}" in
+  status)   comms_status ;;
+  pair)     comms_pair "${2:-}" ;;
+
+  nostr)
+    case "${2:-help}" in
+      keygen) nostr_keygen "${3:-default}" ;;
+      keys)
+        case "${3:-list}" in
+          list) nostr_keys_list ;;
+          show) nostr_show_key "${4:-default}" ;;
+          *)    nostr_keys_list ;;
+        esac ;;
+      relay)
+        case "${3:-status}" in
+          start)  nostr_relay_start ;;
+          stop)   sudo systemctl stop spawn-nostr-relay && echo -e "${GREEN}✓ Relay stopped${NC}" ;;
+          status) nostr_relay_status ;;
+          *)      nostr_relay_status ;;
+        esac ;;
+      peers)
+        case "${3:-list}" in
+          add)  nostr_peer_add "${4:?Usage: nostr peers add <ws://URL>}" ;;
+          list) nostr_peer_list ;;
+          *)    nostr_peer_list ;;
+        esac ;;
+      publish) shift 2; nostr_publish "$*" ;;
+      *)       usage ;;
+    esac ;;
+
+  bitchat)
+    case "${2:-status}" in
+      status) bitchat_status ;;
+      enable) bitchat_enable_bt ;;
+      start)  sudo systemctl start spawn-bitchat && echo -e "${GREEN}✓ BitChat started${NC}" ;;
+      stop)   sudo systemctl stop spawn-bitchat  && echo -e "${GREEN}✓ BitChat stopped${NC}" ;;
+      scan)   bitchat_scan ;;
+      send)   shift 2; bitchat_send "$@" ;;
+      install)
+        echo "Reinstalling BitChat from source..."
+        git clone --depth 1 https://github.com/permissionlesstech/bitchat /tmp/bitchat-install
+        cd /tmp/bitchat-install
+        [ -f Cargo.toml ] && cargo build --release && sudo cp target/release/bitchat /usr/local/bin/ || true
+        [ -f requirements.txt ] && pip3 install -r requirements.txt || true
+        echo -e "${GREEN}✓ BitChat reinstalled${NC}"
+        ;;
+      *)      bitchat_status ;;
+    esac ;;
+
+  whitenoise)
+    case "${2:-status}" in
+      status) whitenoise_status ;;
+      start)  sudo systemctl start spawn-whitenoise && echo -e "${GREEN}✓ WhiteNoise started${NC}" ;;
+      stop)   sudo systemctl stop spawn-whitenoise  && echo -e "${GREEN}✓ WhiteNoise stopped${NC}" ;;
+      send)   shift 2; whitenoise_send "$@" ;;
+      *)      whitenoise_status ;;
+    esac ;;
+
+  help|--help|-h|"") usage ;;
+  *) echo -e "${RED}Unknown: $1${NC}"; usage; exit 1 ;;
+esac

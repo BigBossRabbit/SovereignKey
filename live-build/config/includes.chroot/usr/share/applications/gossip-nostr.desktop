@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Gossip (Nostr)
+GenericName=Nostr Client
+Comment=Privacy-focused Nostr client — connects to local SpawnOS relay and public relays
+Exec=gossip
+Icon=chat
+Categories=Network;Chat;
+Keywords=nostr;decentralized;social;sovereign;

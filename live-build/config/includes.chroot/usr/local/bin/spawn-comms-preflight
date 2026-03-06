@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# spawn-comms-preflight — pre-start checks for comms daemons
+# Called by spawn-bitchat.service, spawn-nostr-relay.service, spawn-whitenoise.service
+
+COMMS_DIR="/home/spawn/.spawn/comms"
+SERVICE="$1"
+
+mkdir -p \
+  "$COMMS_DIR/nostr-relay-db" \
+  "$COMMS_DIR/nostr-keys" \
+  "$COMMS_DIR/bitchat" \
+  "$COMMS_DIR/whitenoise" \
+  "$COMMS_DIR/messages"
+
+chmod 700 "$COMMS_DIR/nostr-keys" "$COMMS_DIR/bitchat" "$COMMS_DIR/whitenoise"
+chown -R spawn:spawn "$COMMS_DIR" 2>/dev/null || true
+
+case "$SERVICE" in
+  bitchat)
+    # Ensure Bluetooth is up
+    hciconfig hci0 up 2>/dev/null || rfkill unblock bluetooth 2>/dev/null || true
+    # Add spawn user to bluetooth group
+    usermod -aG bluetooth spawn 2>/dev/null || true
+    ;;
+  nostr)
+    # Update relay URL with current LAN IP
+    local_ip=$(hostname -I | awk '{print $1}' 2>/dev/null || echo "127.0.0.1")
+    [ -f /etc/spawn/nostr/relay.toml ] && \
+      sed -i "s|relay_url = \".*\"|relay_url = \"ws://${local_ip}:7777\"|" \
+        /etc/spawn/nostr/relay.toml 2>/dev/null || true
+    ;;
+  whitenoise)
+    # Ensure avahi mDNS is running for LAN discovery
+    systemctl is-active --quiet avahi-daemon 2>/dev/null || \
+      systemctl start avahi-daemon 2>/dev/null || true
+    ;;
+esac
+
+exit 0

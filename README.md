@@ -1,163 +1,143 @@
-# SovereignKey — SpawnOS Edition
-
 ![SpawnOS](./Logo/SK%20Logo.jpeg)
 
-> *From promise to power.* The SovereignKey has evolved.
+# SpawnOS
 
-**SpawnOS** is a Debian-based, privacy-hardened, USB-bootable operating system that integrates the **Spawn AI agent system** at the OS level — built on the foundation of SovereignKey's original mission of digital sovereignty, Bitcoin self-custody, and anonymous computing.
+> *The Swiss Army Knife — evolved. Now it thinks.*
 
-Think Kali Linux's architecture (custom Debian live-build ISO, purpose-built tooling) fused with Tails OS's privacy model (Tor-routed, amnesic by default) — and powered by **Spawn**, your own AI agent system running natively at the system service level.
-
----
-
-## What Changed
-
-| Feature | SovereignKey (Before) | SpawnOS (Now) |
-|---|---|---|
-| Base OS | Tails OS (pre-built) | Custom Debian live-build |
-| AI Integration | None | Spawn agent daemon (systemd) |
-| Privacy | Tor via Tails | Tor-routed at kernel/netfilter level |
-| Persistence | Tails Encrypted Storage | Encrypted LUKS partition |
-| Security tooling | None | Full Kali-style toolkit optional |
-| Bitcoin tools | Pre-installed | Pre-installed + Spawn-managed |
-| Build process | USB flash of Tails image | Custom ISO via `live-build` |
+SpawnOS is a custom Debian-based, privacy-hardened, USB-bootable operating system with the **Spawn AI agent** running natively at the OS level. All traffic exits through Tor. All Bitcoin tools connect through your own pruned node. No third-party wrappers. No donation prompts. No external branding. Ever.
 
 ---
 
-## Core Philosophy
+## What SpawnOS Is
 
-SpawnOS is **three things fused into one**:
+Three things fused into one sovereign platform:
 
-1. **Sovereign** — You own the hardware, the OS, the keys, the agents. Nothing phones home.
-2. **Private** — All traffic routes through Tor by default. Amnesic mode available. LUKS encryption on persistence.
-3. **Intelligent** — Spawn runs as a system-level AI agent daemon, enabling autonomous, privacy-first AI workflows natively on the OS.
+**Sovereign AI** — Spawn runs as a system daemon from boot. All agent traffic is cryptographically forced through Tor. No clearnet fallback.
+
+**Bitcoin Sovereignty** — Full self-custody stack connecting to your own pruned Bitcoin Core node: PSBT signing, multi-sig, encrypted offline seed storage, inheritance planning. All Tor-routed.
+
+**Private Computing** — Amnesic mode leaves no trace. Persistent mode uses LUKS encryption. All traffic exits Tor. IPv6 disabled. MAC randomized every boot. DNS over Tor.
+
+---
+
+## Who It's For
+
+Privacy-conscious individuals, Bitcoin holders, developers, and anyone who wants to own their digital future — especially the next generation inheriting this world.
 
 ---
 
 ## What's Included
 
-### AI Layer
-- **Spawn Agent Daemon** — Runs as a `systemd` service at boot, managed via `spawnctl`
-- **Spawn CLI** — `spawnkey` command for agent orchestration
-- **Tor-tunneled AI requests** — All Spawn API calls route through Tor by default
-
-### Bitcoin Sovereignty Tools
-- **Sparrow Wallet** — Full-feature self-custody Bitcoin wallet
-- **Electrum** — Lightweight, reliable Bitcoin wallet
-- **Liana Wallet** — Bitcoin wallet with inheritance/recovery protections
-- **SeedSigner Emulator** — Offline seed generation and PSBT signing
-- **CipherStick (Bails)** — Censorship-resistant Bitcoin storage
-
-### Privacy Infrastructure
-- **Tor** — All traffic routed through Tor (netfilter rules at boot)
-- **Firewall** — Strict nftables ruleset, deny-by-default
-- **DNS-over-Tor** — No DNS leaks
-- **MAC randomization** — On every interface, every boot
-
-### Security Tooling
-- **Nmap** — Network discovery
-- **Wireshark** — Traffic analysis
-- **Aircrack-ng** — WiFi security auditing
-- **Metasploit** — Penetration testing framework (optional install)
-- **VSCodium** — Telemetry-free code editor
-
-### Developer Tools
-- **Python 3** with pip
-- **Node.js** + npm
-- **Git**
-- **Docker** (optional, for Spawn containers)
+| Layer | What's Included |
+|-------|----------------|
+| **AI** | Spawn agent daemon, `spawnkey` CLI (`sk`), Tor-tunneled agent requests |
+| **Bitcoin** | Sparrow Wallet, Electrum, Liana, SeedSigner Emulator, native encrypted seed storage |
+| **Node** | Pruned Bitcoin Core node connection layer (Tor-routed, Sparrow + Electrum integrated) |
+| **Privacy** | Tor routing (kernel-level nftables), DNS-over-Tor, MAC randomization, IPv6 disabled |
+| **Security** | Nmap, Wireshark, Aircrack-ng, KeePassXC, AppArmor, hardened sysctl |
+| **Dev Tools** | VSCodium, Python 3, Node.js, Git |
+| **Boot Modes** | Standard (LUKS persistence) or Amnesic (RAM only, no trace) |
 
 ---
 
-## Quick Start
+## Boot Instructions
 
-### Boot from USB
+1. Flash SpawnOS to USB: `scripts/install-sk.sh /dev/sdX`
+2. Power off, insert USB, power on
+3. Press your boot menu key (table below)
+4. Select **Boot from USB**
+5. At GRUB: choose **SpawnOS** or **SpawnOS (Amnesic)**
+6. Enter LUKS passphrase if using persistence
+7. Spawn agent starts automatically
 
-1. Flash SpawnOS ISO to USB: `scripts/install-sk.sh /dev/sdX`
-2. Boot from USB (see PC Hotkeys below)
-3. At boot menu: select **SpawnOS** or **SpawnOS (Amnesic)**
-4. Unlock persistent storage when prompted (LUKS passphrase)
-5. Spawn agent starts automatically at login
-
-### First-Time Spawn Setup
+### First-Time Setup
 
 ```bash
-spawnkey init
-spawnkey config set tor_mode true
-spawnkey agent start
-spawnkey status
+spawnkey init          # Configure Spawn API endpoint, verify Tor
+spawnkey status        # Confirm everything is running
 ```
 
-### Bitcoin Workflow
+### Quick Reference
 
 ```bash
-# Launch Sparrow (Tor-routed)
-spawnkey launch sparrow
-
-# Or via Spawn agent
-spawnkey agent task "open sparrow wallet"
+sk agent start                    # Start Spawn daemon
+sk agent task "do this"           # Send task to Spawn
+sk launch sparrow                 # Sparrow Wallet (Tor + own node)
+sk launch electrum                # Electrum (Tor + own node)
+sk bitcoin seed store mywallet    # Encrypt and store a seed
+sk bitcoin seed list              # List stored seeds
+sk node status                    # Check pruned node connection
+sk tor status                     # Verify Tor
+sk status                         # Full system status
 ```
 
 ---
 
-## Building the ISO
+## Bitcoin Node Integration
 
-Requirements: Debian/Ubuntu host with `live-build` installed.
+SpawnOS connects all Bitcoin tools to a **pruned Bitcoin Core node** — not a third-party server.
+This means Sparrow and Electrum verify their own transactions without trusting anyone else.
 
-```bash
-cd live-build
-./build.sh
-# Output: ../spawnos-<version>-amd64.iso
+The connection flows through Tor:
+
+```
+Sparrow / Electrum
+      ↓
+spawn-node (local connection manager)
+      ↓
+Bitcoin Core (pruned) ← Tor hidden service
+      ↓
+Bitcoin network
 ```
 
-See `docs/BUILD.md` for full instructions including cross-architecture builds.
+Configure your node:
+```bash
+sk node set <onion-address>    # Set your Bitcoin Core .onion address
+sk node status                  # Verify connection
+```
+
+See `docs/NODE_SETUP.md` for full pruned node setup instructions.
 
 ---
 
 ## Architecture
 
 ```
-SpawnOS
-├── Debian Stable (base)
-│   ├── Kernel + hardened sysctl
-│   ├── nftables (Tor-routing firewall)
-│   └── systemd
-│       ├── spawn.service          ← Spawn AI agent daemon
-│       ├── tor.service            ← Tor daemon
-│       ├── spawn-tor-gateway.service ← Routes Spawn through Tor
-│       └── bitcoin-tools.service  ← Bitcoin app environment
-├── Spawn Agent Layer
-│   ├── /etc/spawn/config.yml      ← Spawn configuration
-│   ├── /usr/local/bin/spawnkey    ← CLI interface
-│   └── /usr/local/share/spawnos/ ← Spawn OS integration modules
-└── User Environment
-    ├── XFCE desktop (lightweight, customized)
-    ├── Bitcoin tools (Sparrow, Electrum, Liana, SeedSigner)
-    └── Security tools (Nmap, Wireshark, VSCodium)
+SpawnOS (Debian Bookworm base)
+├── Kernel + hardened sysctl
+├── nftables — Tor-only egress, default-drop
+├── systemd
+│   ├── spawnos-firewall.service   ← nftables before network
+│   ├── tor.service                ← Tor daemon
+│   ├── spawn-tor-gateway.service  ← Force Spawn through Tor
+│   └── spawn.service              ← Spawn AI agent daemon
+├── Spawn Layer
+│   ├── /etc/spawn/config.yml
+│   ├── /usr/local/bin/spawnkey (sk)
+│   └── /home/spawn/.spawn/        ← encrypted persistence
+└── User Layer — XFCE, Bitcoin tools, security tools
+```
+
+Full details: `docs/ARCHITECTURE.md` | `docs/SPAWN_INTEGRATION.md` | `docs/BUILD.md`
+
+---
+
+## Building SpawnOS
+
+```bash
+scripts/sync-spawn.sh          # Pull Spawn agent into build tree
+sudo scripts/build-iso.sh      # Build ISO (20-60 min, needs Debian/Ubuntu host)
+scripts/install-sk.sh /dev/sdX # Flash to USB
 ```
 
 ---
 
-## Spawn Integration
-
-Spawn runs as a first-class OS citizen:
-
-- **Boot**: `spawn.service` starts after `tor.service` 
-- **Networking**: Spawn agent traffic is forced through Tor via `spawn-tor-gateway.service`
-- **Persistence**: Spawn state lives in encrypted LUKS partition at `/home/spawn/`
-- **CLI**: `spawnkey` wraps the Spawn agent API for terminal use
-- **Desktop**: Spawn dashboard available via app launcher
-
-See `docs/SPAWN_INTEGRATION.md` for the full architecture.
-
----
-
-## PC Boot Hotkeys
+## Boot Menu Hotkeys
 
 <details>
 <summary>Click to expand</summary>
 
-| Manufacturer | Boot Menu Key |
+| Manufacturer | Key |
 |---|---|
 | Acer | Esc, F12, F9 |
 | Asus | Esc, F8 |
@@ -168,41 +148,25 @@ See `docs/SPAWN_INTEGRATION.md` for the full architecture.
 | Sony | F10, F11, Assist |
 | Toshiba | F12 |
 
-**Motherboards:**
-
-| Manufacturer | Boot Menu Key |
-|---|---|
-| Asus | F8 |
-| Gigabyte | F12 |
-| MSI | F11 |
-| Intel | F10 |
-| ASRock | F11 |
+**Motherboards:** Asus F8 · Gigabyte F12 · MSI F11 · Intel F10 · ASRock F11 · EVGA F7
 
 </details>
 
 ---
 
-## Contributing
+## Warnings
 
-- Submit issues and PRs on GitHub
-- Email: okin@okinent.org
-- All contributions welcome: code, docs, translations, testing
+- **Apple M1/M2**: Not currently supported
+- **LUKS passphrase**: Unrecoverable if forgotten — memorize it, then destroy any written copy
+- **Amnesic mode**: Nothing persists after shutdown by design
+- **Spawn API keys**: Store only in encrypted persistence, never in amnesic session
 
 ---
+
+## Contributing
+
+Issues and PRs welcome. Email: okinent@protonmail.com
 
 ## License
 
-MIT — See LICENSE file.
-
----
-
-## Warnings
-
-- **Apple M1/M2**: Not currently supported (Debian live-build limitation)
-- **Always backup** data before writing to USB
-- **Passphrase**: If you forget your LUKS passphrase, data is unrecoverable
-- **Spawn API keys**: Store only in encrypted persistence volume, never in amnesic session
-
----
-
-*SpawnOS — The Swiss Army Knife evolved. Now it thinks.*
+MIT

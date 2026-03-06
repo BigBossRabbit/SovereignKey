@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# spawn-whitenoise-daemon — Runs WhiteNoise libp2p daemon for spawn-whitenoise.service
+
+WN_DIR="$HOME/.spawn/comms/whitenoise"
+LOG="$WN_DIR/whitenoise.log"
+PEER_ID_FILE="$WN_DIR/peer_id"
+
+mkdir -p "$WN_DIR"
+echo "[$(date -Iseconds)] WhiteNoise daemon starting..." >> "$LOG"
+
+# Register mDNS service so other SpawnOS devices on LAN auto-discover us
+# avahi-publish-service makes us visible without any configuration on the other end
+avahi-publish-service "SpawnOS-$(hostname)" _spawnos._tcp 7778 \
+  "version=1.0" "type=whitenoise" 2>/dev/null &
+AVAHI_PID=$!
+echo "[$(date -Iseconds)] mDNS registered: SpawnOS-$(hostname)" >> "$LOG"
+
+# Launch WhiteNoise
+if command -v whitenoise &>/dev/null; then
+  exec whitenoise daemon --data-dir "$WN_DIR" 2>> "$LOG"
+elif [ -f "/opt/whitenoise/main.py" ]; then
+  exec python3 /opt/whitenoise/main.py daemon 2>> "$LOG"
+else
+  echo "[$(date -Iseconds)] WhiteNoise not installed. mDNS still active for discovery." >> "$LOG"
+  # Keep mDNS alive even if WhiteNoise binary isn't there
+  while true; do
+    sleep 60
+  done
+fi

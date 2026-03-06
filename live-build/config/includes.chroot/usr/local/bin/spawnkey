@@ -50,6 +50,22 @@ usage() {
   echo "  bitcoin psbt import <f> Import PSBT for signing"
   echo "  bitcoin backup          Encrypted backup of all bitcoin data"
   echo ""
+  echo -e "${BOLD}COMMS (offline mesh):${NC}"
+  echo "  comms status                Full communications status"
+  echo "  comms pair <IP>             Pair with another SpawnOS device"
+  echo "  comms nostr keygen          Create Nostr identity"
+  echo "  comms nostr relay start     Start local Nostr relay (LAN port 7777)"
+  echo "  comms nostr peers add <url> Add a relay"
+  echo "  comms nostr publish <msg>   Publish a Nostr note"
+  echo "  comms bitchat enable        Enable Bluetooth"
+  echo "  comms bitchat scan          Scan for nearby SpawnOS devices"
+  echo "  comms whitenoise status     WhiteNoise mesh status"
+  echo ""
+  echo -e "${BOLD}NODE:${NC}"
+  echo "  node setup              Configure pruned Bitcoin Core node"
+  echo "  node status             Check node connection"
+  echo "  node apply              Re-apply node config to wallets"
+  echo ""
   echo -e "${BOLD}PRIVACY:${NC}"
   echo "  tor status|newid"
   echo "  mac randomize"
@@ -138,6 +154,8 @@ case "$1" in
     esac ;;
   launch)   launch_tool "$2" ;;
   bitcoin)  shift; /usr/local/bin/spawn-bitcoin "$@" ;;
+  node)     shift; /usr/local/bin/spawn-node "$@" ;;
+  comms)    shift; /usr/local/bin/spawn-comms "$@" ;;
   tor)
     case "$2" in
       status) check_tor ;;

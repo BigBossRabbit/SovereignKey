@@ -15,6 +15,17 @@ systemctl enable spawnos-firewall.service 2>/dev/null || true
 systemctl enable spawn-tor-gateway.service 2>/dev/null || true
 systemctl enable spawn.service 2>/dev/null || true
 
+# Comms services
+systemctl enable bluetooth.service 2>/dev/null || true
+systemctl enable avahi-daemon.service 2>/dev/null || true
+systemctl enable spawn-nostr-relay.service 2>/dev/null || true
+systemctl enable spawn-bitchat.service 2>/dev/null || true
+systemctl enable spawn-whitenoise.service 2>/dev/null || true
+
+# Add spawn user to bluetooth and netdev groups
+usermod -aG bluetooth spawn 2>/dev/null || true
+usermod -aG netdev spawn 2>/dev/null || true
+
 # sk alias
 ln -sf /usr/local/bin/spawnkey /usr/local/bin/sk 2>/dev/null || true
 

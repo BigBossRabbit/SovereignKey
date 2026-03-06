@@ -1,0 +1,302 @@
+#!/usr/bin/env bash
+# =============================================================================
+#  spawn-node — SpawnOS Bitcoin Node Connection Manager
+#  Connects Sparrow and Electrum to your own pruned Bitcoin Core node.
+#  Routes through Tor by default. Falls back to clearnet if Tor is down.
+#  No third-party servers. No trust. Your node, your rules.
+# =============================================================================
+
+set -euo pipefail
+
+NODE_CONFIG="/home/spawn/.spawn/bitcoin/node.conf"
+BITCOIN_DIR="/home/spawn/.spawn/bitcoin"
+
+RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
+CYAN='\033[0;36m'; BOLD='\033[1m'; NC='\033[0m'
+
+init_dirs() {
+  mkdir -p "$BITCOIN_DIR"
+  chmod 700 "$BITCOIN_DIR"
+  [ -f "$NODE_CONFIG" ] || cat > "$NODE_CONFIG" << 'DEFAULT'
+# SpawnOS Node Configuration
+
+# Bitcoin Core RPC
+BITCOIN_RPC_HOST=
+BITCOIN_RPC_PORT=8332
+BITCOIN_RPC_USER=
+BITCOIN_RPC_PASS=
+BITCOIN_RPC_ONION=
+
+# Electrum Personal Server / Electrs
+ELECTRUM_SERVER_HOST=
+ELECTRUM_SERVER_PORT=50001
+ELECTRUM_SERVER_ONION=
+ELECTRUM_SERVER_SSL=false
+
+# Network mode:
+#   tor       = Tor only, fail hard if Tor is down (maximum privacy)
+#   auto      = Tor preferred, clearnet fallback if Tor unavailable (recommended)
+#   clearnet  = Clearnet only (use on trusted LAN, no Tor needed)
+CONNECTION_MODE=auto
+DEFAULT
+  chmod 600 "$NODE_CONFIG"
+}
+
+load_config() {
+  [ -f "$NODE_CONFIG" ] || { echo -e "${RED}No node config. Run: sk node setup${NC}"; exit 1; }
+  # shellcheck source=/dev/null
+  source "$NODE_CONFIG"
+}
+
+# Check if Tor SOCKS proxy is reachable and working
+tor_available() {
+  timeout 5 bash -c 'echo > /dev/tcp/127.0.0.1/9050' 2>/dev/null && \
+  torsocks curl -s --max-time 10 https://check.torproject.org/api/ip 2>/dev/null | \
+    grep -q '"IsTor":true'
+}
+
+# Returns the host to use based on mode and Tor availability
+# Sets global USE_TOR=true/false and HOST_TO_USE
+resolve_connection() {
+  local onion_addr="$1"
+  local clearnet_addr="$2"
+  local context="$3"
+
+  case "${CONNECTION_MODE:-auto}" in
+    tor)
+      if tor_available; then
+        USE_TOR=true
+        HOST_TO_USE="$onion_addr"
+      else
+        echo -e "${RED}✗ Tor is down and CONNECTION_MODE=tor. Cannot connect to $context.${NC}"
+        echo -e "${YELLOW}  Change to CONNECTION_MODE=auto to allow clearnet fallback.${NC}"
+        echo -e "${YELLOW}  Run: sk node set CONNECTION_MODE auto${NC}"
+        USE_TOR=false
+        HOST_TO_USE=""
+        return 1
+      fi
+      ;;
+    auto)
+      if tor_available && [ -n "$onion_addr" ]; then
+        USE_TOR=true
+        HOST_TO_USE="$onion_addr"
+        echo -e "${GREEN}✓ Using Tor (.onion) for $context${NC}"
+      elif tor_available && [ -z "$onion_addr" ]; then
+        # Tor is up but no .onion set — use clearnet via torsocks
+        USE_TOR=true
+        HOST_TO_USE="$clearnet_addr"
+        echo -e "${YELLOW}⚠ Tor up but no .onion set — using clearnet over Tor for $context${NC}"
+      else
+        # Tor is down — fall back to clearnet
+        USE_TOR=false
+        HOST_TO_USE="$clearnet_addr"
+        echo -e "${YELLOW}⚠ Tor unavailable — falling back to clearnet for $context${NC}"
+        echo -e "${YELLOW}  Privacy reduced. Reconnect to Tor when possible.${NC}"
+      fi
+      ;;
+    clearnet)
+      USE_TOR=false
+      HOST_TO_USE="$clearnet_addr"
+      echo -e "${CYAN}Using clearnet for $context (CONNECTION_MODE=clearnet)${NC}"
+      ;;
+  esac
+}
+
+setup_node() {
+  echo -e "${CYAN}${BOLD}=== SpawnOS Node Setup ===${NC}"
+  echo ""
+  echo "Connects Sparrow and Electrum to YOUR OWN Bitcoin Core node."
+  echo "Tor is used by default. Clearnet is available as fallback."
+  echo ""
+
+  read -p "Bitcoin Core .onion address (blank = no Tor for RPC): " rpc_onion
+  read -p "Bitcoin Core RPC host (LAN IP or hostname) [127.0.0.1]: " rpc_host
+  rpc_host="${rpc_host:-127.0.0.1}"
+  read -p "Bitcoin Core RPC port [8332]: " rpc_port
+  rpc_port="${rpc_port:-8332}"
+  read -p "Bitcoin Core RPC username: " rpc_user
+  read -s -p "Bitcoin Core RPC password: " rpc_pass; echo ""
+
+  echo ""
+  echo "Electrum server (Electrs or Electrum Personal Server):"
+  read -p "Electrum server .onion (blank = no Tor for Electrum): " elec_onion
+  read -p "Electrum server host [127.0.0.1]: " elec_host
+  elec_host="${elec_host:-127.0.0.1}"
+  read -p "Electrum server port [50001]: " elec_port
+  elec_port="${elec_port:-50001}"
+  read -p "Use SSL? [y/N]: " elec_ssl
+  elec_ssl=$( [ "$elec_ssl" = "y" ] && echo "true" || echo "false" )
+
+  echo ""
+  echo "Connection mode:"
+  echo "  tor      = Tor only (fail if Tor is down)"
+  echo "  auto     = Tor preferred, clearnet fallback [recommended]"
+  echo "  clearnet = Clearnet only"
+  read -p "Mode [auto]: " conn_mode
+  conn_mode="${conn_mode:-auto}"
+
+  cat > "$NODE_CONFIG" << EOF
+# SpawnOS Node Configuration
+BITCOIN_RPC_HOST=${rpc_host}
+BITCOIN_RPC_PORT=${rpc_port}
+BITCOIN_RPC_USER=${rpc_user}
+BITCOIN_RPC_PASS=${rpc_pass}
+BITCOIN_RPC_ONION=${rpc_onion}
+
+ELECTRUM_SERVER_HOST=${elec_host}
+ELECTRUM_SERVER_PORT=${elec_port}
+ELECTRUM_SERVER_ONION=${elec_onion}
+ELECTRUM_SERVER_SSL=${elec_ssl}
+
+CONNECTION_MODE=${conn_mode}
+EOF
+  chmod 600 "$NODE_CONFIG"
+  unset rpc_pass
+
+  echo -e "${GREEN}✓ Node config saved (mode: ${conn_mode})${NC}"
+  apply_to_wallets
+}
+
+apply_to_wallets() {
+  load_config
+
+  echo -e "${CYAN}Resolving connection mode for wallet config...${NC}"
+
+  # Resolve Bitcoin Core connection
+  USE_TOR=false; HOST_TO_USE=""
+  resolve_connection "${BITCOIN_RPC_ONION:-}" "${BITCOIN_RPC_HOST:-127.0.0.1}" "Bitcoin Core" || true
+
+  if [ -n "$HOST_TO_USE" ]; then
+    mkdir -p /home/spawn/.sparrow
+    local proxy_setting=""
+    [ "$USE_TOR" = "true" ] && proxy_setting='"proxy": "127.0.0.1:9050",' || proxy_setting=""
+    cat > /home/spawn/.sparrow/config << EOF
+{
+  "serverType": "BITCOIN_CORE",
+  "coreServer": "http://${HOST_TO_USE}:${BITCOIN_RPC_PORT:-8332}",
+  "coreAuthType": "USERPASS",
+  "coreUser": "${BITCOIN_RPC_USER:-}",
+  "corePass": "${BITCOIN_RPC_PASS:-}",
+  "useLegacyP2P": false,
+  "checkNewVersion": false,
+  ${proxy_setting}
+  "useProxy": ${USE_TOR}
+}
+EOF
+    chmod 600 /home/spawn/.sparrow/config
+    echo -e "${GREEN}✓ Sparrow → Bitcoin Core (${HOST_TO_USE}:${BITCOIN_RPC_PORT:-8332})${NC}"
+  fi
+
+  # Resolve Electrum server connection
+  USE_TOR=false; HOST_TO_USE=""
+  resolve_connection "${ELECTRUM_SERVER_ONION:-}" "${ELECTRUM_SERVER_HOST:-127.0.0.1}" "Electrum server" || true
+
+  if [ -n "$HOST_TO_USE" ]; then
+    mkdir -p /home/spawn/.electrum
+    local proto=$( [ "${ELECTRUM_SERVER_SSL:-false}" = "true" ] && echo "s" || echo "t" )
+    local proxy_line=""
+    [ "$USE_TOR" = "true" ] && proxy_line='"proxy": "socks5:127.0.0.1:9050:",' || proxy_line='"proxy": "",'
+    cat > /home/spawn/.electrum/config << EOF
+{
+  "auto_connect": false,
+  "check_updates": false,
+  "show_donate_button": false,
+  "oneserver": true,
+  "server": "${HOST_TO_USE}:${ELECTRUM_SERVER_PORT:-50001}:${proto}",
+  ${proxy_line}
+  "proxy_mode": "$( [ "$USE_TOR" = "true" ] && echo "SOCKS5" || echo "NONE" )"
+}
+EOF
+    chmod 600 /home/spawn/.electrum/config
+    echo -e "${GREEN}✓ Electrum → server (${HOST_TO_USE}:${ELECTRUM_SERVER_PORT:-50001})${NC}"
+  fi
+}
+
+node_status() {
+  load_config
+  echo -e "${BOLD}=== Bitcoin Node Connection Status ===${NC}"
+  echo -e "Mode: ${CYAN}${CONNECTION_MODE:-auto}${NC}"
+  echo ""
+
+  # Tor status
+  if tor_available; then
+    echo -e "${GREEN}✓ Tor available${NC}"
+  else
+    echo -e "${YELLOW}⚠ Tor not available${NC}"
+    [ "${CONNECTION_MODE:-auto}" = "auto" ] && \
+      echo -e "${YELLOW}  Using clearnet fallback (auto mode)${NC}"
+    [ "${CONNECTION_MODE:-auto}" = "tor" ] && \
+      echo -e "${RED}  No connections possible (mode=tor, no fallback)${NC}"
+  fi
+  echo ""
+
+  # Bitcoin Core
+  local rpc_target="${BITCOIN_RPC_ONION:-$BITCOIN_RPC_HOST}"
+  if [ -n "$rpc_target" ] && [ -n "${BITCOIN_RPC_USER:-}" ]; then
+    echo -n "Bitcoin Core ($rpc_target:${BITCOIN_RPC_PORT:-8332}): "
+    local curl_cmd="curl"
+    [ "$USE_TOR" = "true" ] && curl_cmd="torsocks curl" 2>/dev/null || true
+    if $curl_cmd -s --max-time 10 \
+        -u "${BITCOIN_RPC_USER}:${BITCOIN_RPC_PASS}" \
+        --data-binary '{"jsonrpc":"1.0","method":"getblockchaininfo"}' \
+        "http://${rpc_target}:${BITCOIN_RPC_PORT:-8332}/" 2>/dev/null | grep -q '"chain"'; then
+      echo -e "${GREEN}✓ Connected${NC}"
+    else
+      echo -e "${RED}✗ Unreachable${NC}"
+    fi
+  else
+    echo -e "${YELLOW}○ Bitcoin Core not configured (run: sk node setup)${NC}"
+  fi
+
+  # Electrum
+  local elec_target="${ELECTRUM_SERVER_ONION:-$ELECTRUM_SERVER_HOST}"
+  if [ -n "$elec_target" ]; then
+    echo -n "Electrum server ($elec_target:${ELECTRUM_SERVER_PORT:-50001}): "
+    if timeout 5 bash -c "echo > /dev/tcp/${elec_target}/${ELECTRUM_SERVER_PORT:-50001}" 2>/dev/null; then
+      echo -e "${GREEN}✓ Reachable${NC}"
+    else
+      echo -e "${RED}✗ Unreachable${NC}"
+    fi
+  else
+    echo -e "${YELLOW}○ Electrum server not configured${NC}"
+  fi
+
+  echo ""
+  echo "Change mode: sk node set CONNECTION_MODE <tor|auto|clearnet>"
+}
+
+set_field() {
+  local field="$1" value="$2"
+  init_dirs
+  if grep -q "^${field}=" "$NODE_CONFIG" 2>/dev/null; then
+    sed -i "s|^${field}=.*|${field}=${value}|" "$NODE_CONFIG"
+  else
+    echo "${field}=${value}" >> "$NODE_CONFIG"
+  fi
+  echo -e "${GREEN}✓ ${field} = ${value}${NC}"
+  apply_to_wallets
+}
+
+usage() {
+  echo -e "${CYAN}${BOLD}spawn-node — SpawnOS Bitcoin Node Manager${NC}"
+  echo ""
+  echo "  setup              Interactive node configuration wizard"
+  echo "  status             Check node connection status"
+  echo "  apply              Re-apply config to Sparrow + Electrum"
+  echo "  set <field> <val>  Set a single config field"
+  echo ""
+  echo "Connection modes (sk node set CONNECTION_MODE <mode>):"
+  echo "  tor       Tor only — max privacy, fails if Tor is down"
+  echo "  auto      Tor preferred, clearnet fallback [default]"
+  echo "  clearnet  Clearnet only — use on trusted LAN"
+  echo ""
+}
+
+init_dirs
+case "${1:-help}" in
+  setup)  setup_node ;;
+  status) node_status ;;
+  apply)  load_config; apply_to_wallets ;;
+  set)    set_field "${2:?field}" "${3:?value}" ;;
+  *)      usage ;;
+esac

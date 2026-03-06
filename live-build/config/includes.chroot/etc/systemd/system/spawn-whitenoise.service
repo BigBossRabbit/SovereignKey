@@ -1,0 +1,19 @@
+[Unit]
+Description=SpawnOS WhiteNoise Mesh Daemon
+After=network.target avahi-daemon.service
+Wants=avahi-daemon.service
+
+[Service]
+Type=simple
+User=spawn
+Group=spawn
+WorkingDirectory=/home/spawn/.spawn/comms/whitenoise
+ExecStartPre=/usr/local/bin/spawn-comms-preflight whitenoise
+ExecStart=/usr/local/bin/spawn-whitenoise-daemon
+Restart=on-failure
+RestartSec=10s
+StandardOutput=journal
+SyslogIdentifier=spawn-whitenoise
+
+[Install]
+WantedBy=multi-user.target

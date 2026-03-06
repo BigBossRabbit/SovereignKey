@@ -1,0 +1,27 @@
+[Unit]
+Description=SpawnOS Local Nostr Relay
+Documentation=https://github.com/BigBossRabbit/SovereignKey
+After=network.target spawn.service
+Wants=spawn.service
+
+[Service]
+Type=simple
+User=spawn
+Group=spawn
+WorkingDirectory=/home/spawn/.spawn/comms
+Environment=RUST_LOG=info
+ExecStartPre=/usr/local/bin/spawn-comms-preflight nostr
+ExecStart=/usr/local/bin/nostr-rs-relay --config /etc/spawn/nostr/relay.toml
+Restart=on-failure
+RestartSec=10s
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=spawn-nostr-relay
+
+# Allow LAN connections on port 7777
+# Tor is optional for relay — mDNS/LAN discovery is the primary offline mechanism
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

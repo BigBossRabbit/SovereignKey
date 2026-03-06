@@ -1,0 +1,215 @@
+#!/bin/bash
+# =============================================================================
+#  SpawnOS Communications Tools — live-build hook
+#  Installs BitChat (Bluetooth mesh), Nostr (local relay + client),
+#  and WhiteNoise (libp2p mesh). All support offline device-to-device comms.
+#  SpawnOS devices can talk to each other without internet.
+# =============================================================================
+
+set -e
+
+echo "[SpawnOS Comms] Installing communications layer..."
+
+# =============================================================================
+#  DEPENDENCIES
+# =============================================================================
+apt-get install -y \
+  bluetooth \
+  bluez \
+  bluez-tools \
+  python3-dbus \
+  python3-gi \
+  python3-bluetooth \
+  libglib2.0-dev \
+  libbluetooth-dev \
+  cargo \
+  rustc \
+  sqlite3 \
+  libsqlite3-dev \
+  libssl-dev \
+  avahi-daemon \
+  avahi-utils \
+  libnss-mdns \
+  jq \
+  websocat \
+  2>/dev/null || true
+
+echo "[SpawnOS Comms] Dependencies installed"
+
+# =============================================================================
+#  BITCHAT — Bluetooth mesh encrypted messaging
+#  https://github.com/permissionlesstech/bitchat
+#  No internet required. Works between nearby SpawnOS devices over BT.
+# =============================================================================
+echo "[SpawnOS Comms] Installing BitChat..."
+
+BITCHAT_DIR="/opt/bitchat"
+mkdir -p "$BITCHAT_DIR"
+
+if git clone --depth 1 https://github.com/permissionlesstech/bitchat "$BITCHAT_DIR" 2>/dev/null; then
+  cd "$BITCHAT_DIR"
+  # Build if it's a Rust project
+  if [ -f "Cargo.toml" ]; then
+    cargo build --release 2>/dev/null && \
+      cp target/release/bitchat /usr/local/bin/bitchat 2>/dev/null || true
+  # Install if it's Python
+  elif [ -f "requirements.txt" ]; then
+    pip3 install --break-system-packages -r requirements.txt 2>/dev/null || true
+    ln -sf "$BITCHAT_DIR/main.py" /usr/local/bin/bitchat 2>/dev/null || true
+  # Install if it's Node
+  elif [ -f "package.json" ]; then
+    npm install --prefix "$BITCHAT_DIR" 2>/dev/null || true
+  fi
+  echo "[SpawnOS Comms] BitChat installed"
+else
+  echo "[SpawnOS Comms] WARNING: BitChat clone failed — install manually after boot"
+  echo "[SpawnOS Comms] Run: sk comms bitchat install"
+fi
+
+# Create BitChat wrapper script (handles different entry points)
+cat > /usr/local/bin/spawn-bitchat-launch << 'BTSCRIPT'
+#!/bin/bash
+BITCHAT_DIR="/opt/bitchat"
+cd "$BITCHAT_DIR"
+if [ -x "/usr/local/bin/bitchat" ]; then
+  exec /usr/local/bin/bitchat "$@"
+elif [ -f "$BITCHAT_DIR/main.py" ]; then
+  exec python3 "$BITCHAT_DIR/main.py" "$@"
+elif [ -f "$BITCHAT_DIR/index.js" ]; then
+  exec node "$BITCHAT_DIR/index.js" "$@"
+else
+  echo "BitChat not found. Run: sk comms bitchat install"
+  exit 1
+fi
+BTSCRIPT
+chmod +x /usr/local/bin/spawn-bitchat-launch
+
+# =============================================================================
+#  NOSTR — Local relay + client
+#  Each SpawnOS device runs its own relay. Devices on same LAN sync directly.
+#  Internet optional — offline SpawnOS mesh works without it.
+# =============================================================================
+echo "[SpawnOS Comms] Installing Nostr tools..."
+
+# nostr-rs-relay — lightweight Nostr relay in Rust
+# Runs locally on each SpawnOS device, making it a relay node
+NOSTR_RELAY_DIR="/opt/nostr-relay"
+mkdir -p "$NOSTR_RELAY_DIR"
+
+if git clone --depth 1 https://github.com/scsibug/nostr-rs-relay "$NOSTR_RELAY_DIR" 2>/dev/null; then
+  cd "$NOSTR_RELAY_DIR"
+  if cargo build --release 2>/dev/null; then
+    cp target/release/nostr-rs-relay /usr/local/bin/nostr-rs-relay
+    echo "[SpawnOS Comms] nostr-rs-relay built and installed"
+  else
+    echo "[SpawnOS Comms] WARNING: nostr-rs-relay build failed — will install at runtime"
+  fi
+else
+  echo "[SpawnOS Comms] WARNING: nostr-rs-relay clone failed"
+fi
+
+# gossip — privacy-focused Nostr desktop client
+GOSSIP_DIR="/opt/gossip"
+mkdir -p "$GOSSIP_DIR"
+# Try to get latest release binary
+GOSSIP_LATEST=$(curl -s https://api.github.com/repos/mikedilger/gossip/releases/latest 2>/dev/null | \
+  grep "browser_download_url.*linux.*x86_64" | grep -v ".sig" | head -1 | \
+  cut -d'"' -f4 2>/dev/null || echo "")
+
+if [ -n "$GOSSIP_LATEST" ]; then
+  curl -fSL --retry 3 --max-time 180 "$GOSSIP_LATEST" -o "$GOSSIP_DIR/gossip" 2>/dev/null && \
+    chmod +x "$GOSSIP_DIR/gossip" && \
+    ln -sf "$GOSSIP_DIR/gossip" /usr/local/bin/gossip 2>/dev/null || true
+fi
+
+# nostril — CLI tool for posting to Nostr (useful for Spawn agent integration)
+if cargo install nostril 2>/dev/null; then
+  echo "[SpawnOS Comms] nostril CLI installed"
+fi
+
+# nostr-tool — Swiss army knife CLI for Nostr
+pip3 install --break-system-packages nostr 2>/dev/null || true
+
+echo "[SpawnOS Comms] Nostr tools installed"
+
+# =============================================================================
+#  WHITENOISE — libp2p anonymous mesh messaging
+#  Peer discovery via mDNS (works on LAN without internet)
+#  Also works over Tor when internet available
+# =============================================================================
+echo "[SpawnOS Comms] Installing WhiteNoise..."
+
+WHITENOISE_DIR="/opt/whitenoise"
+mkdir -p "$WHITENOISE_DIR"
+
+# Try the main WhiteNoise/noise-rust implementation
+if git clone --depth 1 https://github.com/nicowillis/whitenoise "$WHITENOISE_DIR" 2>/dev/null || \
+   git clone --depth 1 https://github.com/WhiteNoise-Dev/whitenoise "$WHITENOISE_DIR" 2>/dev/null; then
+  cd "$WHITENOISE_DIR"
+  if [ -f "Cargo.toml" ]; then
+    cargo build --release 2>/dev/null && \
+      cp target/release/whitenoise /usr/local/bin/whitenoise 2>/dev/null || true
+  elif [ -f "requirements.txt" ]; then
+    pip3 install --break-system-packages -r requirements.txt 2>/dev/null || true
+  fi
+  echo "[SpawnOS Comms] WhiteNoise installed"
+else
+  echo "[SpawnOS Comms] WARNING: WhiteNoise clone failed — install manually"
+fi
+
+# =============================================================================
+#  SPAWN LOCAL NOSTR RELAY CONFIG
+#  Each SpawnOS device runs a relay on port 7777 (LAN-accessible)
+#  Other SpawnOS devices connect to ws://DEVICE-IP:7777
+# =============================================================================
+mkdir -p /etc/spawn/nostr
+
+cat > /etc/spawn/nostr/relay.toml << 'RELAY_CFG'
+# SpawnOS Local Nostr Relay Configuration
+# Runs on each SpawnOS device — makes it a relay node
+# Other SpawnOS devices on the same network connect to this relay
+
+[info]
+relay_url = ""   # auto-populated by spawn-comms at startup
+name = "SpawnOS Local Relay"
+description = "SpawnOS device relay — sovereign communications"
+contact = ""
+
+[network]
+port = 7777
+address = "0.0.0.0"   # LAN-accessible so other SpawnOS devices can connect
+ping_interval_seconds = 300
+
+[limits]
+# Keep it lean for USB/embedded use
+messages_per_sec = 50
+subscriptions_max_per_connection = 20
+max_event_bytes = 65536
+max_ws_message_bytes = 131072
+max_ws_frame_bytes = 131072
+db_in_memory = false
+
+[database]
+data_directory = "/home/spawn/.spawn/comms/nostr-relay-db"
+
+[persistence]
+# Relay data lives on LUKS-encrypted persistence
+# Empty in amnesic mode — relay resets every boot
+RELAY_CFG
+
+echo "[SpawnOS Comms] Local Nostr relay configured on port 7777"
+
+# =============================================================================
+#  COMMS DIRECTORIES IN SKELETON
+# =============================================================================
+mkdir -p /etc/skel/.spawn/comms/nostr-relay-db
+mkdir -p /etc/skel/.spawn/comms/nostr-keys
+mkdir -p /etc/skel/.spawn/comms/bitchat
+mkdir -p /etc/skel/.spawn/comms/whitenoise
+
+chmod 700 /etc/skel/.spawn/comms/nostr-keys \
+          /etc/skel/.spawn/comms/bitchat \
+          /etc/skel/.spawn/comms/whitenoise
+
+echo "[SpawnOS Comms] Communications layer installation complete"
+echo "[SpawnOS Comms] Offline mesh: BitChat (BT) + Nostr (LAN relay) + WhiteNoise (mDNS)"

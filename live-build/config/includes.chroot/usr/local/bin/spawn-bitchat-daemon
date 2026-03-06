@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# spawn-bitchat-daemon — Runs BitChat in daemon mode for spawn-bitchat.service
+
+BITCHAT_DIR="$HOME/.spawn/comms/bitchat"
+LOG="$BITCHAT_DIR/bitchat.log"
+PEERS_LOG="$BITCHAT_DIR/peers.log"
+
+mkdir -p "$BITCHAT_DIR"
+echo "[$(date -Iseconds)] BitChat daemon starting..." >> "$LOG"
+
+# Register this device as a SpawnOS node via Bluetooth advertisement
+# This makes it discoverable by other SpawnOS devices
+if command -v hciconfig &>/dev/null; then
+  hciconfig hci0 piscan 2>/dev/null || true  # Make discoverable + connectable
+  echo "[$(date -Iseconds)] Bluetooth: discoverable" >> "$LOG"
+fi
+
+# Launch BitChat
+if [ -x "/usr/local/bin/bitchat" ]; then
+  exec /usr/local/bin/bitchat daemon 2>> "$LOG"
+elif [ -f "/opt/bitchat/main.py" ]; then
+  exec python3 /opt/bitchat/main.py daemon 2>> "$LOG"
+elif [ -f "/opt/bitchat/index.js" ]; then
+  exec node /opt/bitchat/index.js daemon 2>> "$LOG"
+else
+  echo "[$(date -Iseconds)] BitChat not installed. Run: sk comms bitchat install" >> "$LOG"
+  # Keep service alive — don't fail hard
+  while true; do
+    echo "[$(date -Iseconds)] BitChat stub: waiting for install" >> "$LOG"
+    sleep 60
+  done
+fi

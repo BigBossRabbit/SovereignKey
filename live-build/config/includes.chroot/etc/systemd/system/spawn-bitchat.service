@@ -1,0 +1,20 @@
+[Unit]
+Description=SpawnOS BitChat Bluetooth Mesh Daemon
+After=bluetooth.target
+Requires=bluetooth.target
+
+[Service]
+Type=simple
+User=spawn
+Group=spawn
+SupplementaryGroups=bluetooth
+WorkingDirectory=/home/spawn/.spawn/comms/bitchat
+ExecStartPre=/usr/local/bin/spawn-comms-preflight bitchat
+ExecStart=/usr/local/bin/spawn-bitchat-daemon
+Restart=on-failure
+RestartSec=10s
+StandardOutput=journal
+SyslogIdentifier=spawn-bitchat
+
+[Install]
+WantedBy=multi-user.target

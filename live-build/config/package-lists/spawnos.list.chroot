@@ -87,6 +87,19 @@ firmware-iwlwifi
 firmware-realtek
 linux-headers-amd64
 
+# === COMMS (offline mesh) ===
+bluetooth
+bluez
+bluez-tools
+python3-dbus
+python3-gi
+libbluetooth-dev
+avahi-daemon
+avahi-utils
+libnss-mdns
+websocat
+jq
+
 # === UTILITIES ===
 keepassxc
 qrencode
