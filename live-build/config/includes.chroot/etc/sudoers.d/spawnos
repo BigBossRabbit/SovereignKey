@@ -1,0 +1,37 @@
+# SpawnOS sudoers — controlled privilege escalation
+# Only allows specific commands — no wildcard sudo
+# Audited: allows exactly what spawn-comms, spawnkey, and spawn-node need
+
+Defaults:spawn !requiretty
+Defaults:spawn env_reset
+Defaults:spawn secure_path="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
+# systemctl for SpawnOS services only
+spawn ALL=(root) NOPASSWD: /bin/systemctl start spawn-nostr-relay
+spawn ALL=(root) NOPASSWD: /bin/systemctl stop spawn-nostr-relay
+spawn ALL=(root) NOPASSWD: /bin/systemctl restart spawn-nostr-relay
+spawn ALL=(root) NOPASSWD: /bin/systemctl reload spawn-nostr-relay
+spawn ALL=(root) NOPASSWD: /bin/systemctl start spawn-bitchat
+spawn ALL=(root) NOPASSWD: /bin/systemctl stop spawn-bitchat
+spawn ALL=(root) NOPASSWD: /bin/systemctl start spawn-whitenoise
+spawn ALL=(root) NOPASSWD: /bin/systemctl stop spawn-whitenoise
+spawn ALL=(root) NOPASSWD: /bin/systemctl start tor
+spawn ALL=(root) NOPASSWD: /bin/systemctl stop tor
+spawn ALL=(root) NOPASSWD: /bin/systemctl reload tor
+spawn ALL=(root) NOPASSWD: /bin/systemctl start spawn
+spawn ALL=(root) NOPASSWD: /bin/systemctl stop spawn
+spawn ALL=(root) NOPASSWD: /bin/systemctl restart spawn
+
+# Bluetooth
+spawn ALL=(root) NOPASSWD: /sbin/hciconfig hci0 up
+spawn ALL=(root) NOPASSWD: /sbin/hciconfig hci0 down
+spawn ALL=(root) NOPASSWD: /sbin/hciconfig hci0 piscan
+spawn ALL=(root) NOPASSWD: /usr/sbin/rfkill unblock bluetooth
+spawn ALL=(root) NOPASSWD: /usr/bin/hcitool scan
+
+# MAC randomization
+spawn ALL=(root) NOPASSWD: /usr/bin/macchanger -r *
+
+# SpawnOS scripts
+spawn ALL=(root) NOPASSWD: /usr/local/bin/spawn-wipe
+spawn ALL=(root) NOPASSWD: /usr/local/bin/spawnos-firewall

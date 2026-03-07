@@ -1,30 +1,77 @@
 #!/bin/bash
-# SpawnOS Spawn Setup Hook
+# SpawnOS Spawn Setup Hook — post-security-audit
 
 set -e
 echo "[SpawnOS] Setting up Spawn integration..."
 
+# Create spawn system user
 useradd --system --create-home --home-dir /home/spawn --shell /bin/bash spawn 2>/dev/null || true
-usermod -aG audio,video,netdev,plugdev spawn 2>/dev/null || true
+usermod -aG audio,video,netdev,plugdev,bluetooth spawn 2>/dev/null || true
 
-mkdir -p /home/spawn/.spawn/bitcoin /home/spawn/.spawn/plugins /var/log/spawn /var/run/spawn
+# Create required directories
+mkdir -p /home/spawn/.spawn/bitcoin \
+         /home/spawn/.spawn/comms/nostr-keys \
+         /home/spawn/.spawn/comms/nostr-relay-db \
+         /home/spawn/.spawn/comms/bitchat \
+         /home/spawn/.spawn/comms/whitenoise \
+         /home/spawn/.spawn/plugins \
+         /var/log/spawn \
+         /var/run/spawn
+
+chmod 700 /home/spawn/.spawn/bitcoin \
+          /home/spawn/.spawn/comms/nostr-keys \
+          /home/spawn/.spawn/comms/bitchat \
+          /home/spawn/.spawn/comms/whitenoise
+
 chown -R spawn:spawn /home/spawn /var/log/spawn /var/run/spawn
 
-systemctl enable tor.service 2>/dev/null || true
+# Create comms.yml config (referenced by spawn-comms)
+cat > /etc/spawn/comms.yml << 'COMMS'
+# SpawnOS Communications Configuration
+connection_mode: auto      # tor | auto | clearnet
+nostr_relay_port: 7777
+whitenoise_port: 7778
+bitchat_enabled: true
+nostr_public_relays:
+  - wss://relay.damus.io
+  - wss://nos.lol
+  - wss://relay.snort.social
+COMMS
+chmod 644 /etc/spawn/comms.yml
+
+# Set sudoers permissions (0440 required by sudo)
+chmod 0440 /etc/sudoers.d/spawnos 2>/dev/null || true
+
+# Make ALL SpawnOS scripts executable
+chmod +x \
+  /usr/local/bin/spawnkey \
+  /usr/local/bin/spawn-bitcoin \
+  /usr/local/bin/spawn-comms \
+  /usr/local/bin/spawn-comms-gui \
+  /usr/local/bin/spawn-comms-preflight \
+  /usr/local/bin/spawn-node \
+  /usr/local/bin/spawn-daemon \
+  /usr/local/bin/spawn-client \
+  /usr/local/bin/spawn-wipe \
+  /usr/local/bin/spawn-preflight \
+  /usr/local/bin/spawn-shutdown \
+  /usr/local/bin/spawn-tor-gateway \
+  /usr/local/bin/spawnos-firewall \
+  /usr/local/bin/spawn-bitchat-daemon \
+  /usr/local/bin/spawn-whitenoise-daemon \
+  /usr/local/share/spawnos/comms/nostr_publish.py \
+  2>/dev/null || true
+
+# Enable systemd services
+systemctl enable tor.service              2>/dev/null || true
 systemctl enable spawnos-firewall.service 2>/dev/null || true
 systemctl enable spawn-tor-gateway.service 2>/dev/null || true
-systemctl enable spawn.service 2>/dev/null || true
-
-# Comms services
-systemctl enable bluetooth.service 2>/dev/null || true
-systemctl enable avahi-daemon.service 2>/dev/null || true
+systemctl enable spawn.service            2>/dev/null || true
+systemctl enable bluetooth.service        2>/dev/null || true
+systemctl enable avahi-daemon.service     2>/dev/null || true
 systemctl enable spawn-nostr-relay.service 2>/dev/null || true
-systemctl enable spawn-bitchat.service 2>/dev/null || true
+systemctl enable spawn-bitchat.service    2>/dev/null || true
 systemctl enable spawn-whitenoise.service 2>/dev/null || true
-
-# Add spawn user to bluetooth and netdev groups
-usermod -aG bluetooth spawn 2>/dev/null || true
-usermod -aG netdev spawn 2>/dev/null || true
 
 # sk alias
 ln -sf /usr/local/bin/spawnkey /usr/local/bin/sk 2>/dev/null || true

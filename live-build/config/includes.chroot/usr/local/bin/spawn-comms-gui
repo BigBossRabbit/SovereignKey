@@ -1,0 +1,1556 @@
+#!/usr/bin/env python3
+"""
+SpawnOS Communications Hub — GUI
+A polished GTK3 interface for Nostr, BitChat, and WhiteNoise.
+No terminal knowledge required.
+"""
+
+import gi
+gi.require_version('Gtk', '3.0')
+gi.require_version('GLib', '2.0')
+from gi.repository import Gtk, GLib, Gdk, Pango, GdkPixbuf
+
+import subprocess
+import threading
+import json
+import os
+import re
+import socket
+import time
+from pathlib import Path
+
+# ─── Paths ────────────────────────────────────────────────────────────────────
+SPAWN_COMMS = "/usr/local/bin/spawn-comms"
+COMMS_DIR   = Path.home() / ".spawn" / "comms"
+NOSTR_KEYS  = COMMS_DIR / "nostr-keys"
+PEERS_FILE  = COMMS_DIR / "nostr-peers.json"
+
+# ─── CSS Theme ────────────────────────────────────────────────────────────────
+CSS = b"""
+* {
+    font-family: "Inter", "Segoe UI", "DejaVu Sans", sans-serif;
+}
+
+window {
+    background-color: #0d0d12;
+    color: #e0e0f0;
+}
+
+/* ── Sidebar ── */
+#sidebar {
+    background-color: #111118;
+    border-right: 1px solid #1e1e2e;
+    min-width: 220px;
+}
+#sidebar-logo {
+    padding: 24px 20px 16px 20px;
+    border-bottom: 1px solid #1e1e2e;
+}
+#logo-title {
+    font-size: 18px;
+    font-weight: 800;
+    color: #a78bfa;
+    letter-spacing: 2px;
+}
+#logo-sub {
+    font-size: 10px;
+    color: #6366f1;
+    letter-spacing: 1px;
+}
+
+/* ── Nav Buttons ── */
+.nav-btn {
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    color: #9ca3af;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 10px 16px;
+    margin: 2px 10px;
+    text-align: left;
+    transition: all 0.15s;
+}
+.nav-btn:hover {
+    background-color: #1e1e2e;
+    color: #e0e0f0;
+}
+.nav-btn.active {
+    background-color: #1e1835;
+    color: #a78bfa;
+    font-weight: 700;
+}
+
+/* ── Status Pill ── */
+.status-online  { background-color: #052e16; color: #4ade80; border-radius: 20px; padding: 2px 10px; font-size: 11px; font-weight: 700; }
+.status-offline { background-color: #1c0a00; color: #f97316; border-radius: 20px; padding: 2px 10px; font-size: 11px; font-weight: 700; }
+.status-warn    { background-color: #1c1700; color: #facc15; border-radius: 20px; padding: 2px 10px; font-size: 11px; font-weight: 700; }
+
+/* ── Content Area ── */
+#content {
+    background-color: #0d0d12;
+    padding: 28px 32px;
+}
+#page-title {
+    font-size: 22px;
+    font-weight: 800;
+    color: #e0e0f0;
+    margin-bottom: 4px;
+}
+#page-sub {
+    font-size: 12px;
+    color: #6b7280;
+    margin-bottom: 24px;
+}
+
+/* ── Cards ── */
+.card {
+    background-color: #111118;
+    border: 1px solid #1e1e2e;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 12px;
+}
+.card-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #e0e0f0;
+    margin-bottom: 4px;
+}
+.card-sub {
+    font-size: 12px;
+    color: #6b7280;
+}
+
+/* ── Buttons ── */
+.btn-primary {
+    background-color: #6d28d9;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 9px 20px;
+    font-size: 13px;
+    font-weight: 600;
+}
+.btn-primary:hover    { background-color: #7c3aed; }
+.btn-primary:disabled { background-color: #2d2d40; color: #6b7280; }
+
+.btn-secondary {
+    background-color: #1e1e2e;
+    color: #a78bfa;
+    border: 1px solid #2d2d3e;
+    border-radius: 8px;
+    padding: 9px 20px;
+    font-size: 13px;
+    font-weight: 600;
+}
+.btn-secondary:hover { background-color: #252535; }
+
+.btn-danger {
+    background-color: #1c0a0a;
+    color: #f87171;
+    border: 1px solid #3b0f0f;
+    border-radius: 8px;
+    padding: 9px 20px;
+    font-size: 13px;
+    font-weight: 600;
+}
+.btn-danger:hover { background-color: #2a1010; }
+
+.btn-success {
+    background-color: #052e16;
+    color: #4ade80;
+    border: 1px solid #14532d;
+    border-radius: 8px;
+    padding: 9px 20px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+/* ── Text Inputs ── */
+entry, textview {
+    background-color: #1a1a24;
+    color: #e0e0f0;
+    border: 1px solid #2d2d3e;
+    border-radius: 8px;
+    padding: 9px 12px;
+    font-size: 13px;
+    caret-color: #a78bfa;
+}
+entry:focus, textview:focus {
+    border-color: #6d28d9;
+    outline: none;
+}
+entry::placeholder { color: #4b5563; }
+
+/* ── List Items ── */
+listbox {
+    background-color: #111118;
+    border: 1px solid #1e1e2e;
+    border-radius: 10px;
+}
+listboxrow {
+    padding: 12px 16px;
+    border-bottom: 1px solid #1e1e2e;
+    color: #e0e0f0;
+    font-size: 13px;
+}
+listboxrow:last-child { border-bottom: none; }
+listboxrow:hover   { background-color: #1a1a28; }
+listboxrow:selected { background-color: #1e1835; color: #a78bfa; }
+
+/* ── Top Bar ── */
+#topbar {
+    background-color: #0d0d12;
+    border-bottom: 1px solid #1e1e2e;
+    padding: 12px 24px;
+}
+#device-info {
+    font-size: 12px;
+    color: #6b7280;
+}
+#tor-badge {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 20px;
+}
+.tor-on  { background-color: #052e16; color: #4ade80; }
+.tor-off { background-color: #1c0a00; color: #f97316; }
+
+/* ── Section Headers ── */
+.section-header {
+    font-size: 11px;
+    font-weight: 700;
+    color: #4b5563;
+    letter-spacing: 1.5px;
+    margin: 16px 0 8px 0;
+}
+
+/* ── Dot indicators ── */
+.dot-green  { color: #4ade80; font-size: 16px; }
+.dot-orange { color: #f97316; font-size: 16px; }
+.dot-gray   { color: #4b5563; font-size: 16px; }
+
+/* ── Message bubble ── */
+.msg-out { background-color: #1e1835; border-radius: 12px; padding: 8px 14px; margin: 3px 0; }
+.msg-in  { background-color: #111118; border-radius: 12px; padding: 8px 14px; margin: 3px 0; }
+.msg-text { font-size: 13px; color: #e0e0f0; }
+.msg-meta { font-size: 10px; color: #6b7280; }
+
+/* ── Scrollbar ── */
+scrollbar {
+    background-color: #0d0d12;
+    border: none;
+}
+scrollbar slider {
+    background-color: #2d2d3e;
+    border-radius: 4px;
+    min-width: 4px;
+    min-height: 4px;
+}
+scrollbar slider:hover { background-color: #3d3d50; }
+
+/* ── Separator ── */
+separator { background-color: #1e1e2e; }
+
+/* ── Overview big stat cards ── */
+.stat-card {
+    background-color: #111118;
+    border: 1px solid #1e1e2e;
+    border-radius: 14px;
+    padding: 22px;
+}
+.stat-card.active-card { border-color: #4c1d95; }
+.stat-icon  { font-size: 28px; margin-bottom: 8px; }
+.stat-name  { font-size: 15px; font-weight: 700; color: #e0e0f0; }
+.stat-desc  { font-size: 11px; color: #6b7280; margin-top: 2px; }
+.stat-badge { margin-top: 12px; }
+
+/* ── Pair page ── */
+#pair-box {
+    background-color: #111118;
+    border: 1px solid #2d2d3e;
+    border-radius: 16px;
+    padding: 32px;
+    max-width: 480px;
+}
+#pair-title { font-size: 20px; font-weight: 800; color: #e0e0f0; }
+#pair-sub   { font-size: 13px; color: #6b7280; margin-top: 4px; margin-bottom: 24px; }
+
+/* ── Log / Output ── */
+#log-view {
+    background-color: #080810;
+    color: #a0e0a0;
+    font-family: "JetBrains Mono", "Fira Code", "DejaVu Sans Mono", monospace;
+    font-size: 12px;
+    border-radius: 8px;
+    padding: 12px;
+    border: 1px solid #1e1e2e;
+}
+
+/* ── Spinner ── */
+spinner { color: #6d28d9; }
+"""
+
+
+def run_cmd(cmd, timeout=15):
+    """Run a shell command, return (stdout, stderr, returncode)."""
+    try:
+        r = subprocess.run(
+            cmd, shell=True, capture_output=True,
+            text=True, timeout=timeout
+        )
+        return r.stdout.strip(), r.stderr.strip(), r.returncode
+    except subprocess.TimeoutExpired:
+        return "", "timeout", 1
+    except Exception as e:
+        return "", str(e), 1
+
+
+def run_cmd_async(cmd, callback, timeout=20):
+    """Run a shell command in a background thread, call callback(stdout, ok) on GTK main thread."""
+    def worker():
+        out, err, rc = run_cmd(cmd, timeout)
+        GLib.idle_add(callback, out if rc == 0 else err, rc == 0)
+    threading.Thread(target=worker, daemon=True).start()
+
+
+def is_service_active(name):
+    _, _, rc = run_cmd(f"systemctl is-active --quiet {name}")
+    return rc == 0
+
+
+def get_lan_ip():
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception:
+        return "unknown"
+
+
+def is_bt_active():
+    out, _, _ = run_cmd("hciconfig 2>/dev/null")
+    return "UP RUNNING" in out
+
+
+def get_nostr_keys():
+    keys = []
+    if NOSTR_KEYS.exists():
+        for f in NOSTR_KEYS.glob("*.nostr.gpg"):
+            keys.append(f.stem.replace(".nostr", ""))
+    return keys
+
+
+def get_nostr_peers():
+    if PEERS_FILE.exists():
+        try:
+            return json.loads(PEERS_FILE.read_text())
+        except Exception:
+            pass
+    return []
+
+
+# ─── Main Window ──────────────────────────────────────────────────────────────
+class SpawnCommsHub(Gtk.ApplicationWindow):
+
+    def __init__(self, app):
+        super().__init__(application=app, title="SpawnOS — Comms Hub")
+        self.set_default_size(1060, 680)
+        self.set_resizable(True)
+
+        # Apply CSS
+        css_provider = Gtk.CssProvider()
+        css_provider.load_from_data(CSS)
+        Gtk.StyleContext.add_provider_for_screen(
+            Gdk.Screen.get_default(),
+            css_provider,
+            Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+        )
+
+        self._current_page = "overview"
+        self._build_layout()
+        self._show_page("overview")
+
+        # Live status refresh every 4 seconds
+        GLib.timeout_add(4000, self._refresh_status)
+        GLib.idle_add(self._refresh_status)
+
+    # ── Layout ────────────────────────────────────────────────────────────────
+    def _build_layout(self):
+        root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        self.add(root)
+
+        # Top bar
+        self._topbar = self._build_topbar()
+        root.pack_start(self._topbar, False, False, 0)
+
+        sep = Gtk.Separator()
+        root.pack_start(sep, False, False, 0)
+
+        body = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        root.pack_start(body, True, True, 0)
+
+        # Sidebar
+        self._sidebar = self._build_sidebar()
+        body.pack_start(self._sidebar, False, False, 0)
+
+        sep2 = Gtk.Separator(orientation=Gtk.Orientation.VERTICAL)
+        body.pack_start(sep2, False, False, 0)
+
+        # Content stack
+        self._stack = Gtk.Stack()
+        self._stack.set_transition_type(Gtk.StackTransitionType.CROSSFADE)
+        self._stack.set_transition_duration(120)
+        self._stack.get_style_context().add_class("content")
+
+        scroll = Gtk.ScrolledWindow()
+        scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        scroll.add(self._stack)
+        body.pack_start(scroll, True, True, 0)
+
+        # Build all pages
+        self._stack.add_named(self._page_overview(),    "overview")
+        self._stack.add_named(self._page_nostr(),       "nostr")
+        self._stack.add_named(self._page_bitchat(),     "bitchat")
+        self._stack.add_named(self._page_whitenoise(),  "whitenoise")
+        self._stack.add_named(self._page_pair(),        "pair")
+        self._stack.add_named(self._page_settings(),    "settings")
+
+    def _build_topbar(self):
+        bar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        bar.set_name("topbar")
+        bar.set_spacing(12)
+
+        self._device_label = Gtk.Label()
+        self._device_label.set_name("device-info")
+        self._device_label.set_markup(f"<span foreground='#6b7280'>Loading...</span>")
+        bar.pack_start(self._device_label, True, True, 0)
+
+        self._tor_badge = Gtk.Label(label="● TOR")
+        self._tor_badge.set_name("tor-badge")
+        self._tor_badge.get_style_context().add_class("tor-off")
+        bar.pack_end(self._tor_badge, False, False, 0)
+
+        return bar
+
+    def _build_sidebar(self):
+        sidebar = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        sidebar.set_name("sidebar")
+
+        # Logo
+        logo_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        logo_box.set_name("sidebar-logo")
+        t = Gtk.Label(label="SPAWNOS")
+        t.set_name("logo-title")
+        t.set_xalign(0)
+        s = Gtk.Label(label="COMMS HUB")
+        s.set_name("logo-sub")
+        s.set_xalign(0)
+        logo_box.pack_start(t, False, False, 0)
+        logo_box.pack_start(s, False, False, 0)
+        sidebar.pack_start(logo_box, False, False, 0)
+
+        sep = Gtk.Separator()
+        sidebar.pack_start(sep, False, False, 0)
+
+        # Nav
+        nav_items = [
+            ("overview",   "◉  Overview"),
+            ("nostr",      "⬡  Nostr"),
+            ("bitchat",    "⬡  BitChat"),
+            ("whitenoise", "⬡  WhiteNoise"),
+            ("pair",       "⊕  Pair Devices"),
+            ("settings",   "⚙  Settings"),
+        ]
+        self._nav_btns = {}
+        for page_id, label in nav_items:
+            btn = Gtk.Button(label=label)
+            btn.get_style_context().add_class("nav-btn")
+            btn.set_relief(Gtk.ReliefStyle.NONE)
+            btn.connect("clicked", self._on_nav_click, page_id)
+            sidebar.pack_start(btn, False, False, 0)
+            self._nav_btns[page_id] = btn
+
+        # Spacer
+        sidebar.pack_start(Gtk.Box(), True, True, 0)
+
+        # Version
+        ver = Gtk.Label(label="SpawnOS v1.0.0")
+        ver.set_xalign(0.5)
+        ver.set_margin_bottom(16)
+        ver.get_style_context().add_class("card-sub")
+        sidebar.pack_start(ver, False, False, 0)
+
+        return sidebar
+
+    def _on_nav_click(self, btn, page_id):
+        self._show_page(page_id)
+
+    def _show_page(self, page_id):
+        self._current_page = page_id
+        self._stack.set_visible_child_name(page_id)
+        for pid, btn in self._nav_btns.items():
+            ctx = btn.get_style_context()
+            if pid == page_id:
+                ctx.add_class("active")
+            else:
+                ctx.remove_class("active")
+
+    # ── Status Refresh ────────────────────────────────────────────────────────
+    def _refresh_status(self):
+        # Topbar
+        ip   = get_lan_ip()
+        name = os.uname().nodename
+        self._device_label.set_markup(
+            f"<span foreground='#9ca3af'>{name}</span>"
+            f"<span foreground='#4b5563'>  ·  </span>"
+            f"<span foreground='#6d28d9'>{ip}</span>"
+        )
+        tor_on = is_service_active("tor")
+        self._tor_badge.set_label("● TOR" if tor_on else "○ TOR")
+        ctx = self._tor_badge.get_style_context()
+        ctx.remove_class("tor-on")
+        ctx.remove_class("tor-off")
+        ctx.add_class("tor-on" if tor_on else "tor-off")
+
+        # Overview cards
+        if hasattr(self, "_ov_cards"):
+            self._ov_cards["nostr"].update(
+                is_service_active("spawn-nostr-relay"),
+                f"Relay at ws://{ip}:7777"
+            )
+            self._ov_cards["bitchat"].update(
+                is_bt_active(),
+                "Bluetooth mesh ready" if is_bt_active() else "No Bluetooth detected"
+            )
+            self._ov_cards["whitenoise"].update(
+                is_service_active("spawn-whitenoise"),
+                "libp2p mesh active" if is_service_active("spawn-whitenoise") else "Daemon stopped"
+            )
+
+        return True  # keep repeating
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # PAGE: OVERVIEW
+    # ─────────────────────────────────────────────────────────────────────────
+    def _page_overview(self):
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        box.set_name("content")
+        box.set_margin_start(32); box.set_margin_end(32)
+        box.set_margin_top(28);   box.set_margin_bottom(28)
+
+        t = Gtk.Label(label="Communications Overview")
+        t.set_name("page-title"); t.set_xalign(0)
+        s = Gtk.Label(label="All three comms layers run offline between SpawnOS devices.")
+        s.set_name("page-sub"); s.set_xalign(0)
+        box.pack_start(t, False, False, 0)
+        box.pack_start(s, False, False, 4)
+
+        # Three protocol cards
+        cards_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=16)
+        cards_box.set_margin_top(8)
+        box.pack_start(cards_box, False, True, 0)
+
+        self._ov_cards = {}
+        protocols = [
+            ("nostr",       "⬡",  "Nostr",       "Decentralized messaging\nLocal relay on LAN",  "nostr"),
+            ("bitchat",     "⬡",  "BitChat",      "Bluetooth mesh\nNo internet needed",          "bitchat"),
+            ("whitenoise",  "⬡",  "WhiteNoise",   "libp2p anonymous mesh\nmDNS LAN discovery",   "whitenoise"),
+        ]
+        for page_id, icon, name, desc, service in protocols:
+            card = OverviewCard(icon, name, desc, page_id, self._show_page)
+            self._ov_cards[page_id] = card
+            cards_box.pack_start(card, True, True, 0)
+
+        # Quick actions
+        sep = Gtk.Separator(); sep.set_margin_top(24); sep.set_margin_bottom(16)
+        box.pack_start(sep, False, False, 0)
+
+        qa_label = Gtk.Label(label="QUICK ACTIONS")
+        qa_label.get_style_context().add_class("section-header")
+        qa_label.set_xalign(0)
+        box.pack_start(qa_label, False, False, 0)
+
+        qa_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        box.pack_start(qa_row, False, False, 0)
+
+        start_all = Gtk.Button(label="▶  Start All Services")
+        start_all.get_style_context().add_class("btn-primary")
+        start_all.connect("clicked", self._start_all_services)
+        qa_row.pack_start(start_all, False, False, 0)
+
+        pair_btn = Gtk.Button(label="⊕  Pair a Device")
+        pair_btn.get_style_context().add_class("btn-secondary")
+        pair_btn.connect("clicked", lambda b: self._show_page("pair"))
+        qa_row.pack_start(pair_btn, False, False, 0)
+
+        # System info box
+        sep2 = Gtk.Separator(); sep2.set_margin_top(24); sep2.set_margin_bottom(16)
+        box.pack_start(sep2, False, False, 0)
+
+        info_label = Gtk.Label(label="OFFLINE MESH CAPABILITY")
+        info_label.get_style_context().add_class("section-header")
+        info_label.set_xalign(0)
+        box.pack_start(info_label, False, False, 0)
+
+        info_card = Gtk.Box()
+        info_card.get_style_context().add_class("card")
+        info_card.set_orientation(Gtk.Orientation.VERTICAL)
+        info_card.set_spacing(6)
+
+        rows = [
+            ("⬡", "BitChat",    "Bluetooth only — works with zero infrastructure, even without WiFi"),
+            ("⬡", "Nostr",      "LAN relay mesh — SpawnOS devices sync via each other's local relay"),
+            ("⬡", "WhiteNoise", "mDNS mesh — auto-discovers other SpawnOS devices on the same network"),
+        ]
+        for icon, name, note in rows:
+            row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+            ico = Gtk.Label(label=icon); ico.get_style_context().add_class("dot-gray")
+            nm  = Gtk.Label(label=name); nm.set_markup(f"<b>{name}</b>"); nm.set_size_request(90, -1); nm.set_xalign(0)
+            nt  = Gtk.Label(label=note); nt.get_style_context().add_class("card-sub"); nt.set_xalign(0)
+            row.pack_start(ico, False, False, 0)
+            row.pack_start(nm,  False, False, 0)
+            row.pack_start(nt,  True,  True,  0)
+            info_card.pack_start(row, False, False, 0)
+
+        box.pack_start(info_card, False, True, 0)
+        return box
+
+    def _start_all_services(self, btn):
+        btn.set_sensitive(False)
+        btn.set_label("Starting…")
+        def done(out, ok):
+            btn.set_sensitive(True)
+            btn.set_label("▶  Start All Services")
+            self._show_toast("All services started." if ok else "Partial start — check logs.")
+        run_cmd_async(
+            "sudo systemctl start spawn-nostr-relay spawn-bitchat spawn-whitenoise 2>&1",
+            done
+        )
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # PAGE: NOSTR
+    # ─────────────────────────────────────────────────────────────────────────
+    def _page_nostr(self):
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        box.set_name("content")
+        box.set_margin_start(32); box.set_margin_end(32)
+        box.set_margin_top(28);   box.set_margin_bottom(28)
+
+        t = Gtk.Label(label="Nostr")
+        t.set_name("page-title"); t.set_xalign(0)
+        s = Gtk.Label(label="Decentralized messaging. Your device runs its own relay on port 7777.")
+        s.set_name("page-sub"); s.set_xalign(0)
+        box.pack_start(t, False, False, 0)
+        box.pack_start(s, False, False, 4)
+
+        # Two columns
+        cols = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=20)
+        box.pack_start(cols, True, True, 0)
+
+        # LEFT: Relay + Identities
+        left = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        left.set_size_request(340, -1)
+        cols.pack_start(left, False, False, 0)
+
+        # Relay card
+        relay_card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        relay_card.get_style_context().add_class("card")
+
+        relay_title = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        rt = Gtk.Label(label="Local Relay"); rt.get_style_context().add_class("card-title"); rt.set_xalign(0)
+        self._nostr_relay_badge = StatusBadge("Checking…", "warn")
+        relay_title.pack_start(rt, True, True, 0)
+        relay_title.pack_start(self._nostr_relay_badge, False, False, 0)
+        relay_card.pack_start(relay_title, False, False, 0)
+
+        self._nostr_relay_url = Gtk.Label(label="")
+        self._nostr_relay_url.get_style_context().add_class("card-sub")
+        self._nostr_relay_url.set_xalign(0)
+        self._nostr_relay_url.set_selectable(True)
+        relay_card.pack_start(self._nostr_relay_url, False, False, 0)
+
+        relay_btns = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        relay_start = Gtk.Button(label="Start Relay")
+        relay_start.get_style_context().add_class("btn-success")
+        relay_start.connect("clicked", self._nostr_relay_start)
+        relay_stop = Gtk.Button(label="Stop")
+        relay_stop.get_style_context().add_class("btn-danger")
+        relay_stop.connect("clicked", self._nostr_relay_stop)
+        relay_btns.pack_start(relay_start, False, False, 0)
+        relay_btns.pack_start(relay_stop,  False, False, 0)
+        relay_card.pack_start(relay_btns, False, False, 0)
+        left.pack_start(relay_card, False, False, 0)
+        left.pack_start(_gap(12), False, False, 0)
+
+        # Identities card
+        id_card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        id_card.get_style_context().add_class("card")
+
+        id_header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        it = Gtk.Label(label="Identities"); it.get_style_context().add_class("card-title"); it.set_xalign(0)
+        new_id_btn = Gtk.Button(label="+ New")
+        new_id_btn.get_style_context().add_class("btn-primary")
+        new_id_btn.connect("clicked", self._nostr_new_identity)
+        id_header.pack_start(it, True, True, 0)
+        id_header.pack_start(new_id_btn, False, False, 0)
+        id_card.pack_start(id_header, False, False, 0)
+
+        self._nostr_id_list = Gtk.ListBox()
+        self._nostr_id_list.set_selection_mode(Gtk.SelectionMode.SINGLE)
+        id_card.pack_start(self._nostr_id_list, True, True, 0)
+
+        left.pack_start(id_card, True, True, 0)
+
+        # RIGHT: Peers + Publish
+        right = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        cols.pack_start(right, True, True, 0)
+
+        # Peers card
+        peers_card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        peers_card.get_style_context().add_class("card")
+
+        peers_header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        pt = Gtk.Label(label="Connected Relays")
+        pt.get_style_context().add_class("card-title"); pt.set_xalign(0)
+        add_relay_btn = Gtk.Button(label="+ Add Relay")
+        add_relay_btn.get_style_context().add_class("btn-secondary")
+        add_relay_btn.connect("clicked", self._nostr_add_relay_dialog)
+        peers_header.pack_start(pt, True, True, 0)
+        peers_header.pack_start(add_relay_btn, False, False, 0)
+        peers_card.pack_start(peers_header, False, False, 0)
+
+        self._nostr_peers_list = Gtk.ListBox()
+        peers_sw = Gtk.ScrolledWindow()
+        peers_sw.set_min_content_height(120)
+        peers_sw.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        peers_sw.add(self._nostr_peers_list)
+        peers_card.pack_start(peers_sw, True, True, 0)
+        right.pack_start(peers_card, False, True, 0)
+        right.pack_start(_gap(12), False, False, 0)
+
+        # Publish card
+        pub_card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        pub_card.get_style_context().add_class("card")
+
+        pub_title = Gtk.Label(label="Publish a Note")
+        pub_title.get_style_context().add_class("card-title"); pub_title.set_xalign(0)
+        pub_card.pack_start(pub_title, False, False, 0)
+
+        self._nostr_msg_entry = Gtk.TextView()
+        self._nostr_msg_entry.set_wrap_mode(Gtk.WrapMode.WORD)
+        self._nostr_msg_entry.set_size_request(-1, 80)
+        self._nostr_msg_entry.set_name("log-view")
+        self._nostr_msg_entry.get_buffer().set_text("What's on your mind?")
+        pub_card.pack_start(self._nostr_msg_entry, False, False, 0)
+
+        pub_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        self._nostr_pub_btn = Gtk.Button(label="Publish")
+        self._nostr_pub_btn.get_style_context().add_class("btn-primary")
+        self._nostr_pub_btn.connect("clicked", self._nostr_publish)
+        pub_row.pack_end(self._nostr_pub_btn, False, False, 0)
+        pub_card.pack_start(pub_row, False, False, 0)
+
+        self._nostr_pub_status = Gtk.Label(label="")
+        self._nostr_pub_status.get_style_context().add_class("card-sub")
+        self._nostr_pub_status.set_xalign(0)
+        pub_card.pack_start(self._nostr_pub_status, False, False, 0)
+        right.pack_start(pub_card, False, True, 0)
+
+        # Load data
+        self._nostr_refresh()
+        return box
+
+    def _nostr_refresh(self):
+        # Relay status
+        relay_on = is_service_active("spawn-nostr-relay")
+        ip = get_lan_ip()
+        self._nostr_relay_badge.set_state("online" if relay_on else "offline",
+                                          "Running" if relay_on else "Stopped")
+        self._nostr_relay_url.set_text(f"ws://{ip}:7777  (share with other SpawnOS devices)" if relay_on else "Start relay to share with other devices")
+
+        # Identities
+        for child in self._nostr_id_list.get_children():
+            self._nostr_id_list.remove(child)
+        keys = get_nostr_keys()
+        if keys:
+            for k in keys:
+                row = Gtk.ListBoxRow()
+                lbl = Gtk.Label(label=f"  ◆  {k}")
+                lbl.set_xalign(0); lbl.set_margin_top(4); lbl.set_margin_bottom(4)
+                row.add(lbl); self._nostr_id_list.add(row)
+        else:
+            row = Gtk.ListBoxRow()
+            lbl = Gtk.Label(label="  No identities yet. Click + New.")
+            lbl.get_style_context().add_class("card-sub"); lbl.set_xalign(0)
+            row.add(lbl); self._nostr_id_list.add(row)
+        self._nostr_id_list.show_all()
+
+        # Peers
+        for child in self._nostr_peers_list.get_children():
+            self._nostr_peers_list.remove(child)
+        peers = get_nostr_peers()
+        for p in peers:
+            row = Gtk.ListBoxRow()
+            lbl = Gtk.Label(label=f"  ⬡  {p}")
+            lbl.set_xalign(0); lbl.set_margin_top(4); lbl.set_margin_bottom(4)
+            row.add(lbl); self._nostr_peers_list.add(row)
+        if not peers:
+            row = Gtk.ListBoxRow()
+            lbl = Gtk.Label(label="  No relays. Add a SpawnOS device IP or public relay.")
+            lbl.get_style_context().add_class("card-sub"); lbl.set_xalign(0)
+            row.add(lbl); self._nostr_peers_list.add(row)
+        self._nostr_peers_list.show_all()
+
+    def _nostr_relay_start(self, btn):
+        btn.set_sensitive(False)
+        def done(out, ok):
+            btn.set_sensitive(True)
+            self._nostr_refresh()
+            self._show_toast("Relay started!" if ok else f"Error: {out}")
+        run_cmd_async("sudo systemctl start spawn-nostr-relay 2>&1", done)
+
+    def _nostr_relay_stop(self, btn):
+        run_cmd_async("sudo systemctl stop spawn-nostr-relay 2>&1",
+                      lambda o, ok: (self._nostr_refresh(), self._show_toast("Relay stopped.")))
+
+    def _nostr_new_identity(self, btn):
+        dlg = Gtk.Dialog(title="New Nostr Identity", parent=self, modal=True)
+        dlg.set_default_size(380, 150)
+        ca = dlg.get_content_area()
+        ca.set_spacing(12); ca.set_margin_start(20); ca.set_margin_end(20)
+        ca.set_margin_top(20); ca.set_margin_bottom(20)
+
+        lbl = Gtk.Label(label="Identity name (e.g. 'main', 'work', 'anon'):")
+        lbl.set_xalign(0); ca.pack_start(lbl, False, False, 0)
+        entry = Gtk.Entry(); entry.set_placeholder_text("main")
+        ca.pack_start(entry, False, False, 0)
+
+        dlg.add_button("Cancel", Gtk.ResponseType.CANCEL)
+        dlg.add_button("Create", Gtk.ResponseType.OK)
+        dlg.set_default_response(Gtk.ResponseType.OK)
+        entry.connect("activate", lambda e: dlg.response(Gtk.ResponseType.OK))
+        ca.show_all()
+
+        if dlg.run() == Gtk.ResponseType.OK:
+            name = entry.get_text().strip() or "default"
+            dlg.destroy()
+            # Sanitize name
+            name = re.sub(r"[^a-zA-Z0-9_\-]", "", name)[:32] or "default"
+            self._show_toast(f"Creating identity '{name}'…")
+            def done(out, ok):
+                self._nostr_refresh()
+                self._show_toast(f"Identity '{name}' created!" if ok else f"Error: {out[:80]}")
+            run_cmd_async(f"{SPAWN_COMMS} nostr keygen {name}", done, timeout=30)
+        else:
+            dlg.destroy()
+
+    def _nostr_add_relay_dialog(self, btn):
+        dlg = Gtk.Dialog(title="Add Relay", parent=self, modal=True)
+        dlg.set_default_size(440, 160)
+        ca = dlg.get_content_area()
+        ca.set_spacing(12); ca.set_margin_start(20); ca.set_margin_end(20)
+        ca.set_margin_top(20); ca.set_margin_bottom(20)
+
+        lbl = Gtk.Label(label="Relay URL (SpawnOS device or public relay):")
+        lbl.set_xalign(0); ca.pack_start(lbl, False, False, 0)
+        entry = Gtk.Entry()
+        entry.set_placeholder_text("ws://192.168.1.42:7777  or  wss://relay.damus.io")
+        ca.pack_start(entry, False, False, 0)
+        hint = Gtk.Label(label="For another SpawnOS device: ws://THEIR-IP:7777")
+        hint.get_style_context().add_class("card-sub"); hint.set_xalign(0)
+        ca.pack_start(hint, False, False, 0)
+
+        dlg.add_button("Cancel", Gtk.ResponseType.CANCEL)
+        dlg.add_button("Add",    Gtk.ResponseType.OK)
+        entry.connect("activate", lambda e: dlg.response(Gtk.ResponseType.OK))
+        ca.show_all()
+
+        if dlg.run() == Gtk.ResponseType.OK:
+            url = entry.get_text().strip()
+            dlg.destroy()
+            if url and (url.startswith("ws://") or url.startswith("wss://")):
+                def done(out, ok):
+                    self._nostr_refresh()
+                    self._show_toast("Relay added!" if ok else f"Error: {out[:80]}")
+                run_cmd_async(f"{SPAWN_COMMS} nostr peers add '{url}'", done)
+            else:
+                self._show_toast("Invalid URL. Must start with ws:// or wss://")
+        else:
+            dlg.destroy()
+
+    def _nostr_publish(self, btn):
+        buf = self._nostr_msg_entry.get_buffer()
+        msg = buf.get_text(buf.get_start_iter(), buf.get_end_iter(), False).strip()
+        if not msg or msg == "What's on your mind?":
+            self._nostr_pub_status.set_markup("<span foreground='#f87171'>Enter a message first.</span>")
+            return
+        # Escape for shell
+        msg_safe = msg.replace("'", "'\\''")
+        self._nostr_pub_btn.set_sensitive(False)
+        self._nostr_pub_btn.set_label("Sending…")
+        self._nostr_pub_status.set_text("Publishing…")
+        def done(out, ok):
+            self._nostr_pub_btn.set_sensitive(True)
+            self._nostr_pub_btn.set_label("Publish")
+            if ok:
+                self._nostr_pub_status.set_markup("<span foreground='#4ade80'>✓ Published!</span>")
+                buf.set_text("")
+            else:
+                self._nostr_pub_status.set_markup(f"<span foreground='#f87171'>Failed: {out[:60]}</span>")
+        run_cmd_async(f"{SPAWN_COMMS} nostr publish '{msg_safe}'", done, timeout=30)
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # PAGE: BITCHAT
+    # ─────────────────────────────────────────────────────────────────────────
+    def _page_bitchat(self):
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        box.set_name("content")
+        box.set_margin_start(32); box.set_margin_end(32)
+        box.set_margin_top(28);   box.set_margin_bottom(28)
+
+        t = Gtk.Label(label="BitChat"); t.set_name("page-title"); t.set_xalign(0)
+        s = Gtk.Label(label="Bluetooth mesh messaging. No internet. No infrastructure. Just nearby devices.")
+        s.set_name("page-sub"); s.set_xalign(0)
+        box.pack_start(t, False, False, 0)
+        box.pack_start(s, False, False, 4)
+
+        # Status card
+        status_card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        status_card.get_style_context().add_class("card")
+
+        status_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        self._bt_hw_badge  = StatusBadge("Checking…", "warn")
+        self._bt_svc_badge = StatusBadge("Checking…", "warn")
+
+        hw_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        hw_lbl = Gtk.Label(label="Bluetooth Hardware")
+        hw_lbl.get_style_context().add_class("card-title"); hw_lbl.set_xalign(0)
+        hw_box.pack_start(hw_lbl, False, False, 0)
+        hw_box.pack_start(self._bt_hw_badge, False, False, 0)
+
+        svc_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        svc_lbl = Gtk.Label(label="BitChat Daemon")
+        svc_lbl.get_style_context().add_class("card-title"); svc_lbl.set_xalign(0)
+        svc_box.pack_start(svc_lbl, False, False, 0)
+        svc_box.pack_start(self._bt_svc_badge, False, False, 0)
+
+        status_row.pack_start(hw_box,  True, True, 0)
+        status_row.pack_start(svc_box, True, True, 0)
+        status_card.pack_start(status_row, False, False, 0)
+
+        btns_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        enable_bt = Gtk.Button(label="Enable Bluetooth")
+        enable_bt.get_style_context().add_class("btn-secondary")
+        enable_bt.connect("clicked", self._bt_enable)
+
+        start_svc = Gtk.Button(label="Start BitChat")
+        start_svc.get_style_context().add_class("btn-success")
+        start_svc.connect("clicked", self._bt_start)
+
+        scan_btn = Gtk.Button(label="🔍  Scan for Devices")
+        scan_btn.get_style_context().add_class("btn-primary")
+        scan_btn.connect("clicked", self._bt_scan)
+
+        btns_row.pack_start(enable_bt,  False, False, 0)
+        btns_row.pack_start(start_svc,  False, False, 0)
+        btns_row.pack_start(scan_btn,   False, False, 0)
+        status_card.pack_start(btns_row, False, False, 0)
+        box.pack_start(status_card, False, False, 0)
+        box.pack_start(_gap(12), False, False, 0)
+
+        # Discovered devices
+        dev_hdr = Gtk.Label(label="NEARBY SPAWNOS DEVICES")
+        dev_hdr.get_style_context().add_class("section-header"); dev_hdr.set_xalign(0)
+        box.pack_start(dev_hdr, False, False, 0)
+
+        self._bt_device_list = Gtk.ListBox()
+        self._bt_device_list.set_selection_mode(Gtk.SelectionMode.SINGLE)
+        empty_row = Gtk.ListBoxRow()
+        self._bt_empty_lbl = Gtk.Label(label="  No devices found yet. Click Scan to discover nearby devices.")
+        self._bt_empty_lbl.get_style_context().add_class("card-sub")
+        self._bt_empty_lbl.set_xalign(0)
+        self._bt_empty_lbl.set_margin_top(6); self._bt_empty_lbl.set_margin_bottom(6)
+        empty_row.add(self._bt_empty_lbl)
+        self._bt_device_list.add(empty_row)
+
+        dev_scroll = Gtk.ScrolledWindow()
+        dev_scroll.set_min_content_height(150)
+        dev_scroll.add(self._bt_device_list)
+        box.pack_start(dev_scroll, False, True, 0)
+        box.pack_start(_gap(12), False, False, 0)
+
+        # Send message
+        msg_hdr = Gtk.Label(label="SEND MESSAGE")
+        msg_hdr.get_style_context().add_class("section-header"); msg_hdr.set_xalign(0)
+        box.pack_start(msg_hdr, False, False, 0)
+
+        msg_card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        msg_card.get_style_context().add_class("card")
+
+        target_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        target_lbl = Gtk.Label(label="To (BT address):")
+        target_lbl.set_size_request(130, -1); target_lbl.set_xalign(0)
+        self._bt_target_entry = Gtk.Entry()
+        self._bt_target_entry.set_placeholder_text("XX:XX:XX:XX:XX:XX  or select from list above")
+        target_row.pack_start(target_lbl, False, False, 0)
+        target_row.pack_start(self._bt_target_entry, True, True, 0)
+        msg_card.pack_start(target_row, False, False, 0)
+
+        msg_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        self._bt_msg_entry = Gtk.Entry()
+        self._bt_msg_entry.set_placeholder_text("Type your message…")
+        self._bt_send_btn = Gtk.Button(label="Send")
+        self._bt_send_btn.get_style_context().add_class("btn-primary")
+        self._bt_send_btn.connect("clicked", self._bt_send)
+        self._bt_msg_entry.connect("activate", self._bt_send)
+        msg_row.pack_start(self._bt_msg_entry, True, True, 0)
+        msg_row.pack_start(self._bt_send_btn,  False, False, 0)
+        msg_card.pack_start(msg_row, False, False, 0)
+        box.pack_start(msg_card, False, True, 0)
+
+        self._bt_refresh_status()
+        return box
+
+    def _bt_refresh_status(self):
+        bt_on  = is_bt_active()
+        svc_on = is_service_active("spawn-bitchat")
+        self._bt_hw_badge.set_state("online" if bt_on else "offline",
+                                    "Active" if bt_on else "Not detected")
+        self._bt_svc_badge.set_state("online" if svc_on else "offline",
+                                     "Running" if svc_on else "Stopped")
+
+    def _bt_enable(self, btn):
+        run_cmd_async("sudo hciconfig hci0 up 2>/dev/null; sudo rfkill unblock bluetooth 2>/dev/null; echo done",
+                      lambda o, ok: (self._bt_refresh_status(), self._show_toast("Bluetooth enabled" if ok else "No Bluetooth hardware found")))
+
+    def _bt_start(self, btn):
+        btn.set_sensitive(False)
+        def done(out, ok):
+            btn.set_sensitive(True)
+            self._bt_refresh_status()
+            self._show_toast("BitChat started!" if ok else f"Error: {out[:60]}")
+        run_cmd_async("sudo systemctl start spawn-bitchat 2>&1", done)
+
+    def _bt_scan(self, btn):
+        btn.set_sensitive(False)
+        btn.set_label("Scanning (10s)…")
+        self._show_toast("Scanning for nearby devices…")
+
+        for child in self._bt_device_list.get_children():
+            self._bt_device_list.remove(child)
+
+        def done(out, ok):
+            btn.set_sensitive(True)
+            btn.set_label("🔍  Scan for Devices")
+            if out:
+                lines = [l.strip() for l in out.splitlines() if l.strip() and "Scanning" not in l]
+                for line in lines:
+                    # Parse "AA:BB:CC:DD:EE:FF  DeviceName"
+                    row = Gtk.ListBoxRow()
+                    row_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+                    lbl = Gtk.Label(label=f"  ◆  {line}")
+                    lbl.set_xalign(0); lbl.set_margin_top(4); lbl.set_margin_bottom(4)
+                    row_box.pack_start(lbl, True, True, 0)
+                    # Extract BT address for auto-fill
+                    addr_match = re.search(r"([0-9A-F:]{17})", line, re.I)
+                    if addr_match:
+                        addr = addr_match.group(1)
+                        use_btn = Gtk.Button(label="Select")
+                        use_btn.get_style_context().add_class("btn-secondary")
+                        use_btn.connect("clicked", lambda b, a=addr: self._bt_target_entry.set_text(a))
+                        row_box.pack_start(use_btn, False, False, 8)
+                    row.add(row_box)
+                    self._bt_device_list.add(row)
+                self._bt_device_list.show_all()
+                self._show_toast(f"Found {len(lines)} device(s)")
+            else:
+                row = Gtk.ListBoxRow()
+                lbl = Gtk.Label(label="  No devices found nearby.")
+                lbl.get_style_context().add_class("card-sub"); lbl.set_xalign(0)
+                row.add(lbl); self._bt_device_list.add(row)
+                self._bt_device_list.show_all()
+                self._show_toast("No devices found.")
+
+        run_cmd_async("sudo hcitool scan 2>/dev/null || bluetoothctl devices 2>/dev/null", done, timeout=15)
+
+    def _bt_send(self, widget):
+        target = self._bt_target_entry.get_text().strip()
+        msg    = self._bt_msg_entry.get_text().strip()
+        if not target: self._show_toast("Enter a target address first."); return
+        if not msg:    self._show_toast("Enter a message first."); return
+        # Validate BT address format
+        if not re.match(r"^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$", target):
+            self._show_toast("Invalid Bluetooth address format."); return
+        msg_safe    = msg.replace("'", "'\\''")
+        target_safe = target.replace("'", "")
+        self._bt_send_btn.set_sensitive(False)
+        def done(out, ok):
+            self._bt_send_btn.set_sensitive(True)
+            if ok:
+                self._bt_msg_entry.set_text("")
+                self._show_toast("Message sent!")
+            else:
+                self._show_toast(f"Send failed: {out[:60]}")
+        run_cmd_async(f"{SPAWN_COMMS} bitchat send '{target_safe}' '{msg_safe}'", done)
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # PAGE: WHITENOISE
+    # ─────────────────────────────────────────────────────────────────────────
+    def _page_whitenoise(self):
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        box.set_name("content")
+        box.set_margin_start(32); box.set_margin_end(32)
+        box.set_margin_top(28);   box.set_margin_bottom(28)
+
+        t = Gtk.Label(label="WhiteNoise")
+        t.set_name("page-title"); t.set_xalign(0)
+        s = Gtk.Label(label="Anonymous libp2p mesh. Finds other SpawnOS devices automatically on your network.")
+        s.set_name("page-sub"); s.set_xalign(0)
+        box.pack_start(t, False, False, 0)
+        box.pack_start(s, False, False, 4)
+
+        # Status card
+        wn_card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        wn_card.get_style_context().add_class("card")
+
+        wn_header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        wn_title = Gtk.Label(label="Daemon Status")
+        wn_title.get_style_context().add_class("card-title"); wn_title.set_xalign(0)
+        self._wn_badge = StatusBadge("Checking…", "warn")
+        wn_header.pack_start(wn_title, True, True, 0)
+        wn_header.pack_start(self._wn_badge, False, False, 0)
+        wn_card.pack_start(wn_header, False, False, 0)
+
+        self._wn_peer_id_lbl = Gtk.Label(label="Peer ID: loading…")
+        self._wn_peer_id_lbl.get_style_context().add_class("card-sub")
+        self._wn_peer_id_lbl.set_xalign(0); self._wn_peer_id_lbl.set_selectable(True)
+        wn_card.pack_start(self._wn_peer_id_lbl, False, False, 0)
+
+        wn_btns = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        wn_start = Gtk.Button(label="Start WhiteNoise")
+        wn_start.get_style_context().add_class("btn-success")
+        wn_start.connect("clicked", self._wn_start)
+        wn_stop = Gtk.Button(label="Stop")
+        wn_stop.get_style_context().add_class("btn-danger")
+        wn_stop.connect("clicked", self._wn_stop)
+        wn_btns.pack_start(wn_start, False, False, 0)
+        wn_btns.pack_start(wn_stop, False, False, 0)
+        wn_card.pack_start(wn_btns, False, False, 0)
+        box.pack_start(wn_card, False, False, 0)
+        box.pack_start(_gap(12), False, False, 0)
+
+        # mDNS Peers
+        mdns_hdr = Gtk.Label(label="DISCOVERED PEERS (mDNS)")
+        mdns_hdr.get_style_context().add_class("section-header"); mdns_hdr.set_xalign(0)
+        box.pack_start(mdns_hdr, False, False, 0)
+
+        self._wn_peers_list = Gtk.ListBox()
+        peers_sw = Gtk.ScrolledWindow()
+        peers_sw.set_min_content_height(140)
+        peers_sw.add(self._wn_peers_list)
+        box.pack_start(peers_sw, False, True, 0)
+
+        refresh_btn = Gtk.Button(label="⟳  Refresh Peer List")
+        refresh_btn.get_style_context().add_class("btn-secondary")
+        refresh_btn.set_margin_top(8)
+        refresh_btn.connect("clicked", self._wn_refresh_peers)
+        box.pack_start(refresh_btn, False, False, 0)
+        box.pack_start(_gap(12), False, False, 0)
+
+        # Send
+        send_hdr = Gtk.Label(label="SEND MESSAGE")
+        send_hdr.get_style_context().add_class("section-header"); send_hdr.set_xalign(0)
+        box.pack_start(send_hdr, False, False, 0)
+
+        send_card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        send_card.get_style_context().add_class("card")
+
+        to_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        to_lbl = Gtk.Label(label="Peer ID:"); to_lbl.set_size_request(70, -1); to_lbl.set_xalign(0)
+        self._wn_target_entry = Gtk.Entry()
+        self._wn_target_entry.set_placeholder_text("Select a peer above or enter their Peer ID")
+        to_row.pack_start(to_lbl, False, False, 0)
+        to_row.pack_start(self._wn_target_entry, True, True, 0)
+        send_card.pack_start(to_row, False, False, 0)
+
+        msg_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        self._wn_msg_entry = Gtk.Entry()
+        self._wn_msg_entry.set_placeholder_text("Type your message…")
+        self._wn_send_btn = Gtk.Button(label="Send")
+        self._wn_send_btn.get_style_context().add_class("btn-primary")
+        self._wn_send_btn.connect("clicked", self._wn_send)
+        self._wn_msg_entry.connect("activate", self._wn_send)
+        msg_row.pack_start(self._wn_msg_entry, True, True, 0)
+        msg_row.pack_start(self._wn_send_btn, False, False, 0)
+        send_card.pack_start(msg_row, False, False, 0)
+        box.pack_start(send_card, False, True, 0)
+
+        self._wn_refresh_status()
+        return box
+
+    def _wn_refresh_status(self):
+        on = is_service_active("spawn-whitenoise")
+        self._wn_badge.set_state("online" if on else "offline", "Running" if on else "Stopped")
+        pid_file = COMMS_DIR / "whitenoise" / "peer_id"
+        if pid_file.exists():
+            self._wn_peer_id_lbl.set_text(f"Peer ID: {pid_file.read_text().strip()}")
+        else:
+            self._wn_peer_id_lbl.set_text("Peer ID: (start daemon to generate)")
+
+    def _wn_start(self, btn):
+        btn.set_sensitive(False)
+        def done(out, ok):
+            btn.set_sensitive(True)
+            self._wn_refresh_status()
+            self._show_toast("WhiteNoise started!" if ok else f"Error: {out[:60]}")
+        run_cmd_async("sudo systemctl start spawn-whitenoise 2>&1", done)
+
+    def _wn_stop(self, btn):
+        run_cmd_async("sudo systemctl stop spawn-whitenoise 2>&1",
+                      lambda o, ok: (self._wn_refresh_status(), self._show_toast("WhiteNoise stopped.")))
+
+    def _wn_refresh_peers(self, btn):
+        btn.set_sensitive(False)
+        def done(out, ok):
+            btn.set_sensitive(True)
+            for child in self._wn_peers_list.get_children():
+                self._wn_peers_list.remove(child)
+            lines = [l.strip() for l in out.splitlines() if "SpawnOS" in l or "spawnos" in l.lower()]
+            if lines:
+                for line in lines:
+                    row = Gtk.ListBoxRow()
+                    row_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+                    lbl = Gtk.Label(label=f"  ◆  {line}"); lbl.set_xalign(0)
+                    lbl.set_margin_top(4); lbl.set_margin_bottom(4)
+                    row_box.pack_start(lbl, True, True, 0)
+                    # Extract IP/peer info for select
+                    ip_match = re.search(r"(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})", line)
+                    if ip_match:
+                        ip = ip_match.group(1)
+                        use_btn = Gtk.Button(label="Select")
+                        use_btn.get_style_context().add_class("btn-secondary")
+                        use_btn.connect("clicked", lambda b, i=ip: self._wn_target_entry.set_text(i))
+                        row_box.pack_end(use_btn, False, False, 8)
+                    row.add(row_box)
+                    self._wn_peers_list.add(row)
+            else:
+                row = Gtk.ListBoxRow()
+                lbl = Gtk.Label(label="  No peers found on local network.")
+                lbl.get_style_context().add_class("card-sub"); lbl.set_xalign(0)
+                row.add(lbl); self._wn_peers_list.add(row)
+            self._wn_peers_list.show_all()
+        run_cmd_async("avahi-browse -t _spawnos._tcp 2>/dev/null || echo 'avahi not running'", done, timeout=8)
+
+    def _wn_send(self, widget):
+        target = self._wn_target_entry.get_text().strip()
+        msg    = self._wn_msg_entry.get_text().strip()
+        if not target: self._show_toast("Enter a peer ID or IP first."); return
+        if not msg:    self._show_toast("Enter a message."); return
+        msg_safe    = msg.replace("'", "'\\''")
+        target_safe = re.sub(r"[^a-zA-Z0-9._:\-/]", "", target)[:128]
+        self._wn_send_btn.set_sensitive(False)
+        def done(out, ok):
+            self._wn_send_btn.set_sensitive(True)
+            if ok:
+                self._wn_msg_entry.set_text("")
+                self._show_toast("Message sent!")
+            else:
+                self._show_toast(f"Send failed: {out[:60]}")
+        run_cmd_async(f"{SPAWN_COMMS} whitenoise send '{target_safe}' '{msg_safe}'", done)
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # PAGE: PAIR DEVICES
+    # ─────────────────────────────────────────────────────────────────────────
+    def _page_pair(self):
+        outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        outer.set_name("content")
+        outer.set_halign(Gtk.Align.CENTER)
+        outer.set_valign(Gtk.Align.CENTER)
+        outer.set_margin_start(32); outer.set_margin_end(32)
+        outer.set_margin_top(40);   outer.set_margin_bottom(40)
+
+        pair_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        pair_box.set_name("pair-box")
+        pair_box.set_size_request(500, -1)
+
+        title = Gtk.Label(label="Pair with a SpawnOS Device")
+        title.set_name("pair-title"); title.set_xalign(0)
+        sub = Gtk.Label(label="Enter the IP address shown on the other device (sk comms status).\nThis will connect all three communication layers at once.")
+        sub.set_name("pair-sub"); sub.set_xalign(0); sub.set_line_wrap(True)
+        pair_box.pack_start(title, False, False, 0)
+        pair_box.pack_start(sub,   False, False, 0)
+
+        # IP entry
+        ip_lbl = Gtk.Label(label="Other device IP address:")
+        ip_lbl.get_style_context().add_class("card-title"); ip_lbl.set_xalign(0)
+        ip_lbl.set_margin_top(16); ip_lbl.set_margin_bottom(6)
+        pair_box.pack_start(ip_lbl, False, False, 0)
+
+        self._pair_ip_entry = Gtk.Entry()
+        self._pair_ip_entry.set_placeholder_text("e.g.  192.168.1.42")
+        self._pair_ip_entry.set_size_request(-1, 44)
+        pair_box.pack_start(self._pair_ip_entry, False, False, 0)
+
+        hint = Gtk.Label(label="On the other device, run:  sk comms status  — copy the IP shown.")
+        hint.get_style_context().add_class("card-sub"); hint.set_xalign(0)
+        hint.set_margin_top(6); hint.set_margin_bottom(20)
+        pair_box.pack_start(hint, False, False, 0)
+
+        self._pair_btn = Gtk.Button(label="⊕  Pair Now")
+        self._pair_btn.get_style_context().add_class("btn-primary")
+        self._pair_btn.set_size_request(-1, 44)
+        self._pair_btn.connect("clicked", self._do_pair)
+        self._pair_ip_entry.connect("activate", self._do_pair)
+        pair_box.pack_start(self._pair_btn, False, False, 0)
+
+        # Output log
+        self._pair_log = Gtk.Label(label="")
+        self._pair_log.set_xalign(0); self._pair_log.set_line_wrap(True)
+        self._pair_log.set_margin_top(16)
+        self._pair_log.get_style_context().add_class("card-sub")
+        pair_box.pack_start(self._pair_log, False, False, 0)
+
+        outer.pack_start(pair_box, False, False, 0)
+
+        # How it works info
+        how_card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        how_card.get_style_context().add_class("card")
+        how_card.set_margin_top(28)
+        how_card.set_size_request(500, -1)
+
+        how_title = Gtk.Label(label="What pairing does:")
+        how_title.get_style_context().add_class("card-title"); how_title.set_xalign(0)
+        how_card.pack_start(how_title, False, False, 0)
+
+        steps = [
+            ("⬡", "Adds their Nostr relay (ws://IP:7777) to your relay list"),
+            ("⬡", "Connects WhiteNoise libp2p peers"),
+            ("⬡", "Guides you through Bluetooth setup for BitChat"),
+        ]
+        for icon, text in steps:
+            row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+            ic = Gtk.Label(label=icon); tx = Gtk.Label(label=text); tx.set_xalign(0)
+            tx.get_style_context().add_class("card-sub")
+            row.pack_start(ic, False, False, 0)
+            row.pack_start(tx, True, True, 0)
+            how_card.pack_start(row, False, False, 0)
+
+        outer.pack_start(how_card, False, False, 0)
+        return outer
+
+    def _do_pair(self, widget):
+        ip = self._pair_ip_entry.get_text().strip()
+        if not ip:
+            self._pair_log.set_markup("<span foreground='#f87171'>Enter the other device's IP address first.</span>")
+            return
+        # Validate IP
+        if not re.match(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$", ip):
+            self._pair_log.set_markup("<span foreground='#f87171'>Invalid IP address format.</span>")
+            return
+
+        self._pair_btn.set_sensitive(False)
+        self._pair_btn.set_label("Pairing…")
+        self._pair_log.set_markup("<span foreground='#a78bfa'>Connecting to device…</span>")
+
+        def done(out, ok):
+            self._pair_btn.set_sensitive(True)
+            self._pair_btn.set_label("⊕  Pair Now")
+            if ok:
+                self._pair_log.set_markup(
+                    f"<span foreground='#4ade80'>✓ Paired with {ip}!\n"
+                    f"Nostr relay added. Check BitChat to enable Bluetooth.</span>"
+                )
+                self._show_toast(f"Paired with {ip}!")
+            else:
+                self._pair_log.set_markup(
+                    f"<span foreground='#f97316'>⚠ Partial pair — Nostr relay may still have connected.\n{out[:120]}</span>"
+                )
+        run_cmd_async(f"{SPAWN_COMMS} pair {ip}", done, timeout=30)
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # PAGE: SETTINGS
+    # ─────────────────────────────────────────────────────────────────────────
+    def _page_settings(self):
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        box.set_name("content")
+        box.set_margin_start(32); box.set_margin_end(32)
+        box.set_margin_top(28);   box.set_margin_bottom(28)
+
+        t = Gtk.Label(label="Settings")
+        t.set_name("page-title"); t.set_xalign(0)
+        s = Gtk.Label(label="Network and privacy configuration.")
+        s.set_name("page-sub"); s.set_xalign(0)
+        box.pack_start(t, False, False, 0)
+        box.pack_start(s, False, False, 4)
+
+        # Network mode
+        net_hdr = Gtk.Label(label="NETWORK MODE")
+        net_hdr.get_style_context().add_class("section-header"); net_hdr.set_xalign(0)
+        net_hdr.set_margin_top(16)
+        box.pack_start(net_hdr, False, False, 0)
+
+        net_card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        net_card.get_style_context().add_class("card")
+
+        modes = [
+            ("auto",     "Auto (Recommended)",  "Tor when available, silent clearnet fallback if Tor is down"),
+            ("tor",      "Tor Only",             "Maximum privacy. Fails hard if Tor is down. Not recommended for beginners."),
+            ("clearnet", "Clearnet Only",        "Direct connection. Use only on trusted home/private networks."),
+        ]
+        self._net_mode_btns = {}
+        for mode_id, label, desc in modes:
+            row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+            rb = Gtk.RadioButton(label=label)
+            if self._net_mode_btns:
+                rb.join_group(list(self._net_mode_btns.values())[0])
+            rb.connect("toggled", self._on_net_mode_change, mode_id)
+            desc_lbl = Gtk.Label(label=desc)
+            desc_lbl.get_style_context().add_class("card-sub"); desc_lbl.set_xalign(0)
+            row.pack_start(rb,       False, False, 0)
+            row.pack_start(desc_lbl, True,  True,  0)
+            net_card.pack_start(row, False, False, 0)
+            self._net_mode_btns[mode_id] = rb
+
+        box.pack_start(net_card, False, False, 0)
+
+        # Privacy actions
+        priv_hdr = Gtk.Label(label="PRIVACY ACTIONS")
+        priv_hdr.get_style_context().add_class("section-header"); priv_hdr.set_xalign(0)
+        priv_hdr.set_margin_top(20)
+        box.pack_start(priv_hdr, False, False, 0)
+
+        priv_card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        priv_card.get_style_context().add_class("card")
+
+        priv_actions = [
+            ("New Tor Identity",   "Get a new Tor circuit — changes your .onion path",       "sudo systemctl reload tor"),
+            ("Randomize MAC",      "Change your MAC address to a random value",               "sudo macchanger -r $(ip -o link | awk 'NR==2{print $2}' | tr -d ':')",),
+        ]
+        for label, desc, cmd in priv_actions:
+            row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+            info = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+            lbl = Gtk.Label(label=label); lbl.get_style_context().add_class("card-title"); lbl.set_xalign(0)
+            dl  = Gtk.Label(label=desc);  dl.get_style_context().add_class("card-sub");   dl.set_xalign(0)
+            info.pack_start(lbl, False, False, 0)
+            info.pack_start(dl,  False, False, 0)
+            btn = Gtk.Button(label="Run")
+            btn.get_style_context().add_class("btn-secondary")
+            btn.connect("clicked", lambda b, c=cmd, n=label: self._run_action(c, n))
+            row.pack_start(info, True, True, 0)
+            row.pack_start(btn,  False, False, 0)
+            priv_card.pack_start(row, False, False, 0)
+
+        box.pack_start(priv_card, False, False, 0)
+        return box
+
+    def _on_net_mode_change(self, btn, mode_id):
+        if btn.get_active():
+            run_cmd_async(f"sk node set CONNECTION_MODE {mode_id} 2>&1",
+                          lambda o, ok: self._show_toast(f"Network mode: {mode_id}"))
+
+    def _run_action(self, cmd, name):
+        def done(out, ok):
+            self._show_toast(f"{name}: {'done' if ok else 'error'}")
+        run_cmd_async(cmd, done)
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Toast / notification
+    # ─────────────────────────────────────────────────────────────────────────
+    def _show_toast(self, msg):
+        """Non-blocking one-shot status bar message."""
+        if not hasattr(self, "_toast_lbl"):
+            return
+        self._toast_lbl.set_text(msg)
+        if hasattr(self, "_toast_timer") and self._toast_timer:
+            GLib.source_remove(self._toast_timer)
+        self._toast_timer = GLib.timeout_add(4000, lambda: self._toast_lbl.set_text(""))
+
+
+# ─── Helper Widgets ───────────────────────────────────────────────────────────
+class StatusBadge(Gtk.Label):
+    def __init__(self, text, state="warn"):
+        super().__init__(label=text)
+        self.set_state(state, text)
+
+    def set_state(self, state, text):
+        ctx = self.get_style_context()
+        for cls in ("status-online", "status-offline", "status-warn"):
+            ctx.remove_class(cls)
+        if state == "online":
+            ctx.add_class("status-online")
+            self.set_label(f"● {text}")
+        elif state == "offline":
+            ctx.add_class("status-offline")
+            self.set_label(f"○ {text}")
+        else:
+            ctx.add_class("status-warn")
+            self.set_label(f"◎ {text}")
+
+
+class OverviewCard(Gtk.Box):
+    def __init__(self, icon, name, desc, page_id, show_page_fn):
+        super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        self.get_style_context().add_class("stat-card")
+        self._show_page = show_page_fn
+        self._page_id   = page_id
+
+        icon_lbl = Gtk.Label(label=icon)
+        icon_lbl.get_style_context().add_class("stat-icon")
+        icon_lbl.set_xalign(0)
+
+        name_lbl = Gtk.Label(label=name)
+        name_lbl.get_style_context().add_class("stat-name")
+        name_lbl.set_xalign(0)
+
+        desc_lbl = Gtk.Label(label=desc)
+        desc_lbl.get_style_context().add_class("stat-desc")
+        desc_lbl.set_xalign(0); desc_lbl.set_line_wrap(True)
+
+        self._badge = StatusBadge("Checking…", "warn")
+        self._badge.set_xalign(0)
+        self._badge.get_style_context().add_class("stat-badge")
+
+        open_btn = Gtk.Button(label="Open →")
+        open_btn.get_style_context().add_class("btn-secondary")
+        open_btn.set_margin_top(8)
+        open_btn.connect("clicked", lambda b: self._show_page(page_id))
+
+        self.pack_start(icon_lbl,  False, False, 0)
+        self.pack_start(name_lbl,  False, False, 0)
+        self.pack_start(desc_lbl,  False, False, 0)
+        self.pack_start(self._badge, False, False, 0)
+        self.pack_start(open_btn,  False, False, 0)
+
+    def update(self, active, detail):
+        self._badge.set_state("online" if active else "offline", detail)
+        ctx = self.get_style_context()
+        if active:
+            ctx.add_class("active-card")
+        else:
+            ctx.remove_class("active-card")
+
+
+def _gap(px):
+    box = Gtk.Box()
+    box.set_size_request(-1, px)
+    return box
+
+
+# ─── Application ──────────────────────────────────────────────────────────────
+class SpawnCommsApp(Gtk.Application):
+    def __init__(self):
+        super().__init__(application_id="os.spawn.comms")
+
+    def do_activate(self):
+        win = SpawnCommsHub(self)
+        win.show_all()
+
+
+if __name__ == "__main__":
+    app = SpawnCommsApp()
+    app.run()

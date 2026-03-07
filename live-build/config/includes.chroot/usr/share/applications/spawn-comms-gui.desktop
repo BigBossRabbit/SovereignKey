@@ -1,0 +1,12 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=SpawnOS Comms Hub
+GenericName=Sovereign Communications
+Comment=Manage Nostr, BitChat, and WhiteNoise — offline mesh between SpawnOS devices
+Exec=spawn-comms-gui
+Icon=network-wireless
+Categories=Network;Chat;
+Keywords=nostr;bitchat;whitenoise;mesh;sovereign;offline;spawnos;
+StartupNotify=true
+Terminal=false

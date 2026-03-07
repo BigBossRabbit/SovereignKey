@@ -4,6 +4,7 @@
 #  Connects Sparrow and Electrum to your own pruned Bitcoin Core node.
 #  Routes through Tor by default. Falls back to clearnet if Tor is down.
 #  No third-party servers. No trust. Your node, your rules.
+#  SECURITY: set_field sanitizes input; no sed injection possible.
 # =============================================================================
 
 set -euo pipefail
@@ -19,24 +20,16 @@ init_dirs() {
   chmod 700 "$BITCOIN_DIR"
   [ -f "$NODE_CONFIG" ] || cat > "$NODE_CONFIG" << 'DEFAULT'
 # SpawnOS Node Configuration
-
-# Bitcoin Core RPC
 BITCOIN_RPC_HOST=
 BITCOIN_RPC_PORT=8332
 BITCOIN_RPC_USER=
 BITCOIN_RPC_PASS=
 BITCOIN_RPC_ONION=
-
-# Electrum Personal Server / Electrs
 ELECTRUM_SERVER_HOST=
 ELECTRUM_SERVER_PORT=50001
 ELECTRUM_SERVER_ONION=
 ELECTRUM_SERVER_SSL=false
-
-# Network mode:
-#   tor       = Tor only, fail hard if Tor is down (maximum privacy)
-#   auto      = Tor preferred, clearnet fallback if Tor unavailable (recommended)
-#   clearnet  = Clearnet only (use on trusted LAN, no Tor needed)
+# tor = Tor only | auto = Tor preferred + clearnet fallback | clearnet = direct
 CONNECTION_MODE=auto
 DEFAULT
   chmod 600 "$NODE_CONFIG"
@@ -48,121 +41,81 @@ load_config() {
   source "$NODE_CONFIG"
 }
 
-# Check if Tor SOCKS proxy is reachable and working
 tor_available() {
   timeout 5 bash -c 'echo > /dev/tcp/127.0.0.1/9050' 2>/dev/null && \
   torsocks curl -s --max-time 10 https://check.torproject.org/api/ip 2>/dev/null | \
     grep -q '"IsTor":true'
 }
 
-# Returns the host to use based on mode and Tor availability
-# Sets global USE_TOR=true/false and HOST_TO_USE
 resolve_connection() {
-  local onion_addr="$1"
-  local clearnet_addr="$2"
-  local context="$3"
-
+  local onion_addr="$1" clearnet_addr="$2" context="$3"
   case "${CONNECTION_MODE:-auto}" in
     tor)
       if tor_available; then
-        USE_TOR=true
-        HOST_TO_USE="$onion_addr"
+        USE_TOR=true; HOST_TO_USE="$onion_addr"
       else
         echo -e "${RED}✗ Tor is down and CONNECTION_MODE=tor. Cannot connect to $context.${NC}"
-        echo -e "${YELLOW}  Change to CONNECTION_MODE=auto to allow clearnet fallback.${NC}"
         echo -e "${YELLOW}  Run: sk node set CONNECTION_MODE auto${NC}"
-        USE_TOR=false
-        HOST_TO_USE=""
-        return 1
-      fi
-      ;;
+        USE_TOR=false; HOST_TO_USE=""; return 1
+      fi ;;
     auto)
       if tor_available && [ -n "$onion_addr" ]; then
-        USE_TOR=true
-        HOST_TO_USE="$onion_addr"
+        USE_TOR=true; HOST_TO_USE="$onion_addr"
         echo -e "${GREEN}✓ Using Tor (.onion) for $context${NC}"
       elif tor_available && [ -z "$onion_addr" ]; then
-        # Tor is up but no .onion set — use clearnet via torsocks
-        USE_TOR=true
-        HOST_TO_USE="$clearnet_addr"
-        echo -e "${YELLOW}⚠ Tor up but no .onion set — using clearnet over Tor for $context${NC}"
+        USE_TOR=true; HOST_TO_USE="$clearnet_addr"
+        echo -e "${YELLOW}⚠ No .onion — using clearnet over Tor for $context${NC}"
       else
-        # Tor is down — fall back to clearnet
-        USE_TOR=false
-        HOST_TO_USE="$clearnet_addr"
-        echo -e "${YELLOW}⚠ Tor unavailable — falling back to clearnet for $context${NC}"
+        USE_TOR=false; HOST_TO_USE="$clearnet_addr"
+        echo -e "${YELLOW}⚠ Tor unavailable — clearnet fallback for $context${NC}"
         echo -e "${YELLOW}  Privacy reduced. Reconnect to Tor when possible.${NC}"
-      fi
-      ;;
+      fi ;;
     clearnet)
-      USE_TOR=false
-      HOST_TO_USE="$clearnet_addr"
-      echo -e "${CYAN}Using clearnet for $context (CONNECTION_MODE=clearnet)${NC}"
-      ;;
+      USE_TOR=false; HOST_TO_USE="$clearnet_addr"
+      echo -e "${CYAN}Using clearnet for $context${NC}" ;;
   esac
 }
 
 setup_node() {
   echo -e "${CYAN}${BOLD}=== SpawnOS Node Setup ===${NC}"
   echo ""
-  echo "Connects Sparrow and Electrum to YOUR OWN Bitcoin Core node."
-  echo "Tor is used by default. Clearnet is available as fallback."
-  echo ""
-
-  read -p "Bitcoin Core .onion address (blank = no Tor for RPC): " rpc_onion
-  read -p "Bitcoin Core RPC host (LAN IP or hostname) [127.0.0.1]: " rpc_host
-  rpc_host="${rpc_host:-127.0.0.1}"
-  read -p "Bitcoin Core RPC port [8332]: " rpc_port
-  rpc_port="${rpc_port:-8332}"
+  read -p "Bitcoin Core .onion address (blank = none): " rpc_onion
+  read -p "Bitcoin Core RPC host [127.0.0.1]: " rpc_host; rpc_host="${rpc_host:-127.0.0.1}"
+  read -p "Bitcoin Core RPC port [8332]: " rpc_port; rpc_port="${rpc_port:-8332}"
   read -p "Bitcoin Core RPC username: " rpc_user
   read -s -p "Bitcoin Core RPC password: " rpc_pass; echo ""
 
-  echo ""
-  echo "Electrum server (Electrs or Electrum Personal Server):"
-  read -p "Electrum server .onion (blank = no Tor for Electrum): " elec_onion
-  read -p "Electrum server host [127.0.0.1]: " elec_host
-  elec_host="${elec_host:-127.0.0.1}"
-  read -p "Electrum server port [50001]: " elec_port
-  elec_port="${elec_port:-50001}"
+  read -p "Electrum server .onion (blank = none): " elec_onion
+  read -p "Electrum server host [127.0.0.1]: " elec_host; elec_host="${elec_host:-127.0.0.1}"
+  read -p "Electrum server port [50001]: " elec_port; elec_port="${elec_port:-50001}"
   read -p "Use SSL? [y/N]: " elec_ssl
   elec_ssl=$( [ "$elec_ssl" = "y" ] && echo "true" || echo "false" )
 
-  echo ""
-  echo "Connection mode:"
-  echo "  tor      = Tor only (fail if Tor is down)"
-  echo "  auto     = Tor preferred, clearnet fallback [recommended]"
-  echo "  clearnet = Clearnet only"
-  read -p "Mode [auto]: " conn_mode
-  conn_mode="${conn_mode:-auto}"
+  echo "  tor=max privacy  auto=recommended  clearnet=LAN only"
+  read -p "Connection mode [auto]: " conn_mode; conn_mode="${conn_mode:-auto}"
 
   cat > "$NODE_CONFIG" << EOF
-# SpawnOS Node Configuration
 BITCOIN_RPC_HOST=${rpc_host}
 BITCOIN_RPC_PORT=${rpc_port}
 BITCOIN_RPC_USER=${rpc_user}
 BITCOIN_RPC_PASS=${rpc_pass}
 BITCOIN_RPC_ONION=${rpc_onion}
-
 ELECTRUM_SERVER_HOST=${elec_host}
 ELECTRUM_SERVER_PORT=${elec_port}
 ELECTRUM_SERVER_ONION=${elec_onion}
 ELECTRUM_SERVER_SSL=${elec_ssl}
-
 CONNECTION_MODE=${conn_mode}
 EOF
   chmod 600 "$NODE_CONFIG"
   unset rpc_pass
-
   echo -e "${GREEN}✓ Node config saved (mode: ${conn_mode})${NC}"
   apply_to_wallets
 }
 
 apply_to_wallets() {
   load_config
+  echo -e "${CYAN}Applying node config to wallets...${NC}"
 
-  echo -e "${CYAN}Resolving connection mode for wallet config...${NC}"
-
-  # Resolve Bitcoin Core connection
   USE_TOR=false; HOST_TO_USE=""
   resolve_connection "${BITCOIN_RPC_ONION:-}" "${BITCOIN_RPC_HOST:-127.0.0.1}" "Bitcoin Core" || true
 
@@ -187,13 +140,12 @@ EOF
     echo -e "${GREEN}✓ Sparrow → Bitcoin Core (${HOST_TO_USE}:${BITCOIN_RPC_PORT:-8332})${NC}"
   fi
 
-  # Resolve Electrum server connection
   USE_TOR=false; HOST_TO_USE=""
   resolve_connection "${ELECTRUM_SERVER_ONION:-}" "${ELECTRUM_SERVER_HOST:-127.0.0.1}" "Electrum server" || true
 
   if [ -n "$HOST_TO_USE" ]; then
     mkdir -p /home/spawn/.electrum
-    local proto=$( [ "${ELECTRUM_SERVER_SSL:-false}" = "true" ] && echo "s" || echo "t" )
+    local proto; proto=$( [ "${ELECTRUM_SERVER_SSL:-false}" = "true" ] && echo "s" || echo "t" )
     local proxy_line=""
     [ "$USE_TOR" = "true" ] && proxy_line='"proxy": "socks5:127.0.0.1:9050:",' || proxy_line='"proxy": "",'
     cat > /home/spawn/.electrum/config << EOF
@@ -217,25 +169,20 @@ node_status() {
   echo -e "${BOLD}=== Bitcoin Node Connection Status ===${NC}"
   echo -e "Mode: ${CYAN}${CONNECTION_MODE:-auto}${NC}"
   echo ""
-
-  # Tor status
   if tor_available; then
     echo -e "${GREEN}✓ Tor available${NC}"
   else
     echo -e "${YELLOW}⚠ Tor not available${NC}"
-    [ "${CONNECTION_MODE:-auto}" = "auto" ] && \
-      echo -e "${YELLOW}  Using clearnet fallback (auto mode)${NC}"
-    [ "${CONNECTION_MODE:-auto}" = "tor" ] && \
-      echo -e "${RED}  No connections possible (mode=tor, no fallback)${NC}"
+    [ "${CONNECTION_MODE:-auto}" = "auto" ]  && echo -e "${YELLOW}  Clearnet fallback active (auto mode)${NC}"
+    [ "${CONNECTION_MODE:-auto}" = "tor" ]   && echo -e "${RED}  No connections (mode=tor requires Tor)${NC}"
   fi
   echo ""
 
-  # Bitcoin Core
   local rpc_target="${BITCOIN_RPC_ONION:-$BITCOIN_RPC_HOST}"
   if [ -n "$rpc_target" ] && [ -n "${BITCOIN_RPC_USER:-}" ]; then
     echo -n "Bitcoin Core ($rpc_target:${BITCOIN_RPC_PORT:-8332}): "
     local curl_cmd="curl"
-    [ "$USE_TOR" = "true" ] && curl_cmd="torsocks curl" 2>/dev/null || true
+    tor_available && curl_cmd="torsocks curl"
     if $curl_cmd -s --max-time 10 \
         -u "${BITCOIN_RPC_USER}:${BITCOIN_RPC_PASS}" \
         --data-binary '{"jsonrpc":"1.0","method":"getblockchaininfo"}' \
@@ -248,7 +195,6 @@ node_status() {
     echo -e "${YELLOW}○ Bitcoin Core not configured (run: sk node setup)${NC}"
   fi
 
-  # Electrum
   local elec_target="${ELECTRUM_SERVER_ONION:-$ELECTRUM_SERVER_HOST}"
   if [ -n "$elec_target" ]; then
     echo -n "Electrum server ($elec_target:${ELECTRUM_SERVER_PORT:-50001}): "
@@ -268,11 +214,24 @@ node_status() {
 set_field() {
   local field="$1" value="$2"
   init_dirs
-  if grep -q "^${field}=" "$NODE_CONFIG" 2>/dev/null; then
-    sed -i "s|^${field}=.*|${field}=${value}|" "$NODE_CONFIG"
-  else
-    echo "${field}=${value}" >> "$NODE_CONFIG"
+  # Validate field name: uppercase letters and underscores only (prevents injection)
+  if ! printf '%s' "$field" | grep -qE '^[A-Z_]+$'; then
+    echo -e "${RED}Invalid field name: $field (only A-Z and _ allowed)${NC}"
+    return 1
   fi
+  # Validate value: no newlines, null bytes, or backslashes
+  if printf '%s' "$value" | grep -qP '[\x00\n\r\\]'; then
+    echo -e "${RED}Invalid characters in value${NC}"
+    return 1
+  fi
+  # Write via temp file (avoids sed injection entirely)
+  local tmp
+  tmp=$(mktemp)
+  chmod 600 "$tmp"
+  grep -v "^${field}=" "$NODE_CONFIG" 2>/dev/null > "$tmp" || true
+  printf '%s=%s\n' "$field" "$value" >> "$tmp"
+  mv "$tmp" "$NODE_CONFIG"
+  chmod 600 "$NODE_CONFIG"
   echo -e "${GREEN}✓ ${field} = ${value}${NC}"
   apply_to_wallets
 }

@@ -56,14 +56,17 @@ nostr_keygen() {
   # Generate a 32-byte private key (nsec)
   local privkey=$(openssl rand -hex 32)
 
-  # Derive public key using Python nostr library or fallback
+  # Derive public key — pass via env var, never via -c string interpolation
   local pubkey=""
-  if python3 -c "from nostr.key import PrivateKey; pk=PrivateKey(bytes.fromhex('${privkey}')); print(pk.public_key.hex())" 2>/dev/null; then
-    pubkey=$(python3 -c "from nostr.key import PrivateKey; pk=PrivateKey(bytes.fromhex('${privkey}')); print(pk.public_key.hex())" 2>/dev/null)
-  else
-    # Fallback: store privkey, pubkey derived at runtime
-    pubkey="(derived at runtime)"
-  fi
+  pubkey=$(SPAWN_NSEC="$privkey" python3 -c "
+import os, sys
+try:
+    from nostr.key import PrivateKey
+    pk = PrivateKey(bytes.fromhex(os.environ['SPAWN_NSEC']))
+    print(pk.public_key.hex())
+except Exception:
+    print('(derived at runtime)')
+" 2>/dev/null) || pubkey="(derived at runtime)"
 
   # Encrypt and store the keypair
   printf '{"nsec":"%s","npub":"%s","name":"%s","created":"%s"}' \
@@ -149,18 +152,20 @@ nostr_peer_add() {
   local peers="[]"
   [ -f "$peers_file" ] && peers=$(cat "$peers_file" 2>/dev/null || echo "[]")
 
-  # Add new relay
-  python3 -c "
-import sys, json
-peers = json.loads('${peers}')
-url = '${relay_url}'
+  # Add new relay — use temp file, no shell injection via heredoc
+  SPAWN_PEERS_FILE="$peers_file" SPAWN_NEW_RELAY="$relay_url" python3 - << 'PYEOF' 2>/dev/null
+import os, json, sys
+pf  = os.environ['SPAWN_PEERS_FILE']
+url = os.environ['SPAWN_NEW_RELAY']
+try:
+    peers = json.loads(open(pf).read()) if os.path.exists(pf) else []
+except Exception:
+    peers = []
 if url not in peers:
     peers.append(url)
-    print(json.dumps(peers, indent=2))
-else:
-    print(json.dumps(peers, indent=2))
-    print('Already in peer list', file=sys.stderr)
-" > "$peers_file" 2>/dev/null
+with open(pf, 'w') as f:
+    json.dump(peers, f, indent=2)
+PYEOF
 
   echo -e "${GREEN}✓ Nostr peer added: ${relay_url}${NC}"
   echo "  gossip and nostril will connect to this relay"
@@ -197,9 +202,9 @@ nostr_publish() {
   [ -z "$message" ] && { echo "Usage: sk comms nostr publish <message>"; return 1; }
   [ ! -f "$keyfile" ] && { echo -e "${RED}No Nostr identity. Run: sk comms nostr keygen${NC}"; return 1; }
 
-  # Extract private key
+  # Extract private key via stdin pipe (never in process args)
   local privkey
-  privkey=$(gpg --decrypt "$keyfile" 2>/dev/null | python3 -c "import sys,json; print(json.load(sys.stdin)['nsec'])" 2>/dev/null)
+  privkey=$(gpg --decrypt "$keyfile" 2>/dev/null | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['nsec'])" 2>/dev/null)
 
   # Get relay list
   local relays=()
